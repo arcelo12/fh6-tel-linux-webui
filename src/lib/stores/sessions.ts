@@ -1,50 +1,60 @@
 import { writable } from 'svelte/store';
-import { invoke } from '@tauri-apps/api/core';
 import type { SessionRow, TelemetryPacket, AppSettings, SessionLap } from '$lib/types';
 
 export const sessions = writable<SessionRow[]>([]);
 export const settings = writable<AppSettings | null>(null);
 
+async function apiRequest<T>(path: string, method: string = 'GET', body?: any): Promise<T> {
+  const opts: RequestInit = { method, headers: {} };
+  if (body) {
+    opts.headers = { 'Content-Type': 'application/json' };
+    opts.body = JSON.stringify(body);
+  }
+  const res = await fetch(`/api${path}`, opts);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
 export async function loadSessions() {
-  const rows = await invoke<SessionRow[]>('get_sessions');
+  const rows = await apiRequest<SessionRow[]>('/sessions');
   sessions.set(rows);
 }
 
 export async function loadSessionPackets(sessionId: number): Promise<TelemetryPacket[]> {
-  return invoke<TelemetryPacket[]>('get_session_packets', { sessionId });
+  return apiRequest<TelemetryPacket[]>(`/sessions/${sessionId}/packets`);
 }
 
 export async function loadSessionLaps(sessionId: number): Promise<SessionLap[]> {
-  return invoke<SessionLap[]>('get_session_laps', { sessionId });
+  return apiRequest<SessionLap[]>(`/sessions/${sessionId}/laps`);
 }
 
 export async function deleteSession(sessionId: number) {
-  await invoke('delete_session', { sessionId });
+  await apiRequest(`/sessions/${sessionId}`, 'DELETE');
   await loadSessions();
 }
 
 export async function clearAllSessions() {
-  await invoke('clear_all_sessions');
+  await apiRequest('/sessions', 'DELETE');
   await loadSessions();
 }
 
 export async function renameSession(sessionId: number, name: string | null) {
-  await invoke('rename_session', { sessionId, name });
+  await apiRequest(`/sessions/${sessionId}/rename`, 'POST', { name });
   await loadSessions();
 }
 
 export async function setSessionBookmark(sessionId: number, bookmarked: boolean) {
-  await invoke('set_session_bookmark', { sessionId, bookmarked });
+  await apiRequest(`/sessions/${sessionId}/bookmark`, 'POST', { bookmarked });
   await loadSessions();
 }
 
 export async function loadSettings(): Promise<AppSettings> {
-  const s = await invoke<AppSettings>('get_settings');
+  const s = await apiRequest<AppSettings>('/settings');
   settings.set(s);
   return s;
 }
 
 export async function saveSettings(s: AppSettings) {
-  await invoke('save_settings', { newSettings: s });
+  await apiRequest('/settings', 'POST', s);
   settings.set(s);
 }

@@ -1,13 +1,10 @@
 import { writable, derived } from 'svelte/store';
-import { listen } from '@tauri-apps/api/event';
+import { io } from 'socket.io-client';
 import type { TelemetryPacket } from '$lib/types';
 
 export const packet = writable<TelemetryPacket | null>(null);
 export const isConnected = writable(false);
 
-// Replay state. When `active`, the whole dashboard renders `packets[index]`
-// instead of live telemetry — no dashboard component needs to change because
-// they all read `displayPacket`.
 export interface ReplayState {
   active: boolean;
   packets: TelemetryPacket[];
@@ -50,7 +47,6 @@ export function exitReplay() {
   replay.set({ ...emptyReplay });
 }
 
-// Freezes at last isRaceOn=true packet so pause menu doesn't clear the display
 let _frozen: TelemetryPacket | null = null;
 export const displayPacket = derived(
   [packet, replay],
@@ -82,13 +78,17 @@ export const rpmPercent = derived(displayPacket, ($p) => {
 
 let lastPacketTime = 0;
 let connectionTimer: ReturnType<typeof setInterval> | null = null;
+let socket: ReturnType<typeof io> | null = null;
 
 export async function startTelemetryListener() {
-  await listen<TelemetryPacket>('telemetry_tick', (event) => {
-    packet.set(event.payload);
-    lastPacketTime = Date.now();
-    isConnected.set(true);
-  });
+  if (!socket) {
+    socket = io();
+    socket.on('telemetry_tick', (data: TelemetryPacket) => {
+      packet.set(data);
+      lastPacketTime = Date.now();
+      isConnected.set(true);
+    });
+  }
 
   if (connectionTimer) clearInterval(connectionTimer);
   connectionTimer = setInterval(() => {

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { getVersion } from '@tauri-apps/api/app';
   import { isConnected, displayPacket } from '$lib/stores/telemetry';
   import { carName } from '$lib/car-name';
   import { CAR_CLASS_LABELS, DRIVETRAIN_LABELS } from '$lib/types';
@@ -19,8 +18,7 @@
   let driveLabel = $derived(pkt ? (DRIVETRAIN_LABELS[pkt.drivetrainType] ?? '?') : '—');
 
   let copied = $state(false);
-  let version = $state('');
-  getVersion().then(v => { version = v; });
+  let version = 'WebUI';
 
   async function copyOrdinal() {
     if (!pkt || !isUnknown) return;
