@@ -213,6 +213,8 @@
     flex-shrink: 0;
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
+    justify-content: center;
     gap: clamp(0.4rem, 1.2vw, 0.8rem);
     padding: 0 clamp(0.4rem, 1.2vw, 0.8rem) clamp(0.3rem, 0.8vh, 0.6rem);
     min-height: 0;

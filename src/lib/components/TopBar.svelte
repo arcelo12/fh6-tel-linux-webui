@@ -35,11 +35,14 @@
   </div>
 
   <div class="car-info">
-    <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
     <span
+      role="button"
+      tabindex="0"
       class="car-name"
       class:unknown={isUnknown}
       onclick={copyOrdinal}
+      onkeydown={(e) => e.key === 'Enter' && copyOrdinal()}
       title={isUnknown ? `Ordinal: ${pkt?.carOrdinal} — click to copy` : undefined}
     >
       {copied ? 'Copied!' : carLabel}

@@ -34,7 +34,8 @@
   // Header edit state
   let editing = $state(false);
   let draftName = $state('');
-  let bookmarked = $state(session.bookmarked);
+  let bookmarked = $state(false);
+  $effect(() => { bookmarked = session.bookmarked; });
 
   let defaultLabel = $derived(
     `${carName(session.carOrdinal)} — ${new Date(session.startedAt).toLocaleString()}`

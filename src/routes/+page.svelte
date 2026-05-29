@@ -192,10 +192,9 @@
   :global(body) {
     background: var(--bg-body);
     color: var(--tx-hi);
-    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-    overflow: hidden;
-    height: 100vh;
-    width: 100vw;
+    font-family: 'Inter', 'Outfit', system-ui, -apple-system, sans-serif;
+    transition: background-color 0.4s ease, color 0.4s ease;
+    margin: 0;
   }
 
   /* App-wide slim themed scrollbars (WebView2/Chromium + Firefox) */
@@ -221,25 +220,58 @@
     display: flex;
     flex-direction: column;
     height: 100vh;
+    height: 100dvh;
     width: 100vw;
+    overflow: hidden;
   }
 
   .main {
     flex: 1;
-    display: grid;
-    grid-template-columns: 1fr clamp(130px, 24vw, 210px);
+    display: flex;
+    flex-direction: row;
     min-height: 0;
     overflow: hidden;
   }
 
-  .center-area { background: var(--bg-body); overflow: hidden; min-width: 0; }
+  .center-area { flex: 1; background: var(--bg-body); overflow: hidden; min-width: 0; }
   .right-strip {
+    width: clamp(130px, 24vw, 210px);
     border-left: 1px solid var(--bd-subtle); background: var(--bg-body);
-    overflow: hidden; min-width: 0;
+    overflow: hidden; min-width: 0; flex-shrink: 0;
     display: flex; flex-direction: column;
   }
   .tire-area { flex: 1; min-height: 0; }
   .lap-bar { height: clamp(2.5rem, 5.5vh, 4rem); flex-shrink: 0; }
+
+  @media (max-width: 768px) {
+    .dashboard {
+      height: auto;
+      min-height: 100dvh;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    .main {
+      flex-direction: column;
+      overflow: visible;
+    }
+    .center-area {
+      min-height: 55vh;
+      overflow: visible;
+    }
+    .right-strip {
+      width: 100%;
+      border-left: none;
+      border-top: 1px solid var(--bd-subtle);
+      min-height: 60vh;
+    }
+    .lap-bar {
+      position: sticky;
+      bottom: 0;
+      z-index: 10;
+      background: var(--bg-body);
+      border-top: 1px solid var(--bd-subtle);
+    }
+  }
 
   .update-bar {
     position: fixed; top: 0; left: 0; right: 0; z-index: 300;
