@@ -1,5 +1,4 @@
 import { writable, derived } from 'svelte/store';
-import { io } from 'socket.io-client';
 import type { TelemetryPacket } from '$lib/types';
 
 export const packet = writable<TelemetryPacket | null>(null);
@@ -78,16 +77,30 @@ export const rpmPercent = derived(displayPacket, ($p) => {
 
 let lastPacketTime = 0;
 let connectionTimer: ReturnType<typeof setInterval> | null = null;
-let socket: ReturnType<typeof io> | null = null;
+let ws: WebSocket | null = null;
 
 export async function startTelemetryListener() {
-  if (!socket) {
-    socket = io();
-    socket.on('telemetry_tick', (data: TelemetryPacket) => {
-      packet.set(data);
-      lastPacketTime = Date.now();
+  if (!ws || ws.readyState === WebSocket.CLOSED) {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+    
+    ws.onopen = () => {
       isConnected.set(true);
-    });
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data: TelemetryPacket = JSON.parse(event.data);
+        packet.set(data);
+        lastPacketTime = Date.now();
+        isConnected.set(true);
+      } catch (err) {}
+    };
+
+    ws.onclose = () => {
+      isConnected.set(false);
+      ws = null;
+    };
   }
 
   if (connectionTimer) clearInterval(connectionTimer);

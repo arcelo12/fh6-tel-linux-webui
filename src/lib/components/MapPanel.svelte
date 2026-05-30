@@ -215,13 +215,15 @@
 <style>
   .map-host {
     width: 100%;
-    aspect-ratio: 1;
+    height: 100%;
+    flex: 1;
+    min-height: 0;
     border-radius: 4px;
     overflow: hidden;
     background: var(--bg-card);
   }
   .map-host.compact {
-    aspect-ratio: 1;
+    height: 100%;
   }
   :global(.leaflet-container) {
     background: var(--bg-card);

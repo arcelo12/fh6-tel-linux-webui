@@ -53,6 +53,7 @@
   </div>
 
   <div class="controls">
+    <a href="/pro" class="icon-btn" title="Pro Mode" style="text-decoration: none; font-size: 1.1rem; line-height: 1;">🚀</a>
     <button class="icon-btn" onclick={onSessions} title="Sessions">⏱</button>
     <button class="icon-btn" onclick={onSettings} title="Settings">⚙</button>
     {#if version}<span class="version">v{version}</span>{/if}
