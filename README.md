@@ -1,10 +1,10 @@
 # FH6 Telemetry Dashboard
 
-[![Latest Release](https://img.shields.io/github/v/release/TheBanHammer/fh6-tel?label=version&color=blue)](https://github.com/TheBanHammer/fh6-tel/releases/latest)
-[![Download](https://img.shields.io/github/downloads/TheBanHammer/fh6-tel/total)](https://github.com/TheBanHammer/fh6-tel/releases/latest)
-[![Build](https://img.shields.io/github/actions/workflow/status/TheBanHammer/fh6-tel/release.yml?label=build)](https://github.com/TheBanHammer/fh6-tel/actions/workflows/release.yml)
+[![Latest Release](https://img.shields.io/github/v/release/arcelo12/fh6-tel-linux-webui?label=version&color=blue)](https://github.com/arcelo12/fh6-tel-linux-webui/releases/latest)
+[![Download](https://img.shields.io/github/downloads/arcelo12/fh6-tel-linux-webui/total)](https://github.com/arcelo12/fh6-tel-linux-webui/releases/latest)
+[![Build](https://img.shields.io/github/actions/workflow/status/arcelo12/fh6-tel-linux-webui/release.yml?label=build)](https://github.com/arcelo12/fh6-tel-linux-webui/actions/workflows/release.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-[![Platform](https://img.shields.io/badge/platform-Windows-0078d4?logo=windows)](https://github.com/TheBanHammer/fh6-tel/releases/latest)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-0078d4)](https://github.com/arcelo12/fh6-tel-linux-webui/releases/latest)
 
 Real-time telemetry dashboard for Forza Horizon 6. Displays speed, RPM, heading, attitude, tire temps, driver inputs, and lap times. Auto-records timed sessions to SQLite with a full replay/analysis viewer and a calibrated track map.
 
@@ -21,7 +21,21 @@ Real-time telemetry dashboard for Forza Horizon 6. Displays speed, RPM, heading,
 
 ## Install
 
-Download the latest `.exe` installer from [Releases](https://github.com/TheBanHammer/fh6-tel/releases/latest) and run it. No additional software required — WebView2 is pre-installed on Windows 10/11.
+Download the appropriate binary file for your operating system from the [Releases](https://github.com/arcelo12/fh6-tel-linux-webui/releases/latest) page and run it. No installations or external assets are required!
+
+* **Windows:** Double-click `fh6-telemetry-windows-amd64.exe` to run.
+* **Linux:** Make it executable and run it:
+  ```bash
+  chmod +x fh6-telemetry-linux-amd64
+  ./fh6-telemetry-linux-amd64
+  ```
+* **macOS:** Make the binary for your architecture executable and run it:
+  ```bash
+  chmod +x fh6-telemetry-darwin-*
+  ./fh6-telemetry-darwin-amd64    # For Intel Macs
+  # OR
+  ./fh6-telemetry-darwin-arm64    # For Apple Silicon (M1/M2/M3)
+  ```
 
 ## Forza Horizon 6 Setup
 
