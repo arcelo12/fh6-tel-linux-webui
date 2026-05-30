@@ -11,10 +11,21 @@ jobs:
   release:
     permissions:
       contents: write
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
 
       - name: Bump version and tag
         shell: bash
@@ -27,15 +38,9 @@ jobs:
               p.version = '${{ inputs.version }}';
               fs.writeFileSync('package.json', JSON.stringify(p, null, 2) + '\n');
             "
-            node -e "
-              const fs = require('fs');
-              const p = JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json', 'utf8'));
-              p.version = '${{ inputs.version }}';
-              fs.writeFileSync('src-tauri/tauri.conf.json', JSON.stringify(p, null, 2) + '\n');
-            "
             git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add package.json src-tauri/tauri.conf.json
+            git add package.json
             git commit -m "chore: release v${{ inputs.version }}"
             git push origin HEAD
           else
@@ -44,25 +49,35 @@ jobs:
           git tag "v${{ inputs.version }}" 2>/dev/null || echo "Tag already exists locally"
           git push origin "v${{ inputs.version }}" 2>/dev/null || echo "Tag already exists on remote"
 
-      - uses: ./.github/actions/setup-build-env
+      - name: Install dependencies
+        run: npm install
 
-      - name: Build and publish release
-        uses: tauri-apps/tauri-action@v0
+      - name: Build Svelte & compile Go binaries
+        run: go run scripts/build_release.go
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          name: FH6 Telemetry v${{ inputs.version }}
+          body: |
+            ## FH6 Telemetry Release v${{ inputs.version }}
+
+            Self-contained binaries for Forza Horizon 6 Telemetry Dashboard.
+            No external assets or installations required! Just download and run the binary for your platform.
+
+            ### Setup Forza Horizon 6:
+            1. Go to **Settings → HUD and Gameplay**
+            2. Scroll down to **Data Out**
+            3. Set **Data Out** to **On**
+            4. Set **Data Out IP Address** to your PC's IP (or `127.0.0.1` if running on the same PC)
+            5. Set **Data Out IP Port** to `20440` (default)
+          draft: false
+          prerelease: false
+          files: |
+            dist/fh6-telemetry-windows-amd64.exe
+            dist/fh6-telemetry-linux-amd64
+            dist/fh6-telemetry-darwin-amd64
+            dist/fh6-telemetry-darwin-arm64
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        with:
-          updaterJsonPath: latest.json
-          updaterJsonPreferNsis: true
-          tagName: v${{ inputs.version }}
-          releaseName: FH6 Telemetry v${{ inputs.version }}
-          releaseBody: |
-            ## Install
-
-            Download the `.exe` installer (NSIS) or `.msi` below.
-
-            Configure Forza Horizon 6 to send UDP telemetry to your PC's IP on port **20440**
-            (*Settings → HUD and gameplay → Data out → Format: Car Dash*).
-          releaseDraft: true
-          prerelease: false

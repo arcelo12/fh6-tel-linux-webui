@@ -89,33 +89,44 @@ A toggleable track map (right strip on the dashboard, plus the viewer's Map tab)
 
 Calibrate world coordinates to the map via **Settings → Track Map → Calibrate map…**: drive to two landmarks, capture each, and click them on the map. View, zoom, and a custom tile source can be overridden in Settings.
 
-## Building from Source
+## Running from Source (Development)
 
-Prerequisites: Rust 1.75+, Node.js 18+, Windows 10/11 with WebView2 (pre-installed).
+Prerequisites: Go 1.21+, Node.js 18+.
+
+1. **Install dependencies:**
+   ```bash
+   npm install
+   ```
+
+2. **Run Svelte development server (Optional for UI hot-reloading):**
+   ```bash
+   npm run dev
+   ```
+
+3. **Run Go server:**
+   ```bash
+   cd go-server
+   go run .
+   ```
+   Go server will start on port `5173` and host both Svelte frontend (via `../build`) and the raw UI (`../ui/contoh.html` at `http://localhost:5173/ui/contoh.html`).
+
+---
+
+## Building Release Binaries
+
+To build fully self-contained binaries that embed the compiled Svelte frontend and the static UI pages (so users can run it by just executing a single binary file without any external dependencies), you can run:
 
 ```bash
-npm install
-npm run tauri build
+go run scripts/build_release.go
 ```
 
-Installer output: `src-tauri/target/release/bundle/nsis/FH6 Telemetry_0.1.0_x64-setup.exe`
+This script will:
+1. Automatically build the Svelte production assets (`npm run build`).
+2. Copy files to `go-server` for embedding.
+3. Cross-compile binaries for:
+   - **Windows** (x86_64) -> `dist/fh6-telemetry-windows-amd64.exe`
+   - **Linux** (x86_64) -> `dist/fh6-telemetry-linux-amd64`
+   - **macOS** (x86_64) -> `dist/fh6-telemetry-darwin-amd64`
+   - **macOS** (Apple Silicon) -> `dist/fh6-telemetry-darwin-arm64`
+4. Clean up the temporary assets.
 
-## Running from Source
-
-Prerequisites: same as Building from Source.
-
-```bash
-npm install
-npm run tauri dev
-```
-
-Vite hot-reloads the Svelte frontend on save; Rust changes trigger a rebuild and relaunch of the app window.
-
-## Releasing
-
-Releases are created via the **Release** GitHub Actions workflow:
-
-1. Go to **Actions → Release → Run workflow**
-2. Enter the version number (e.g. `1.0.0`)
-3. The workflow bumps versions in `package.json` and `tauri.conf.json`, commits, tags `v1.0.0`, builds the NSIS and MSI installers, and publishes a draft GitHub release
-4. Review and publish the draft from the [Releases](https://github.com/TheBanHammer/fh6-tel/releases) page

@@ -11,4 +11,36 @@ vite.config.ts.timestamp-*
 .claude/
 scripts/*
 !scripts/download-map-tiles.mjs
+!scripts/build_release.go
 ui/
+
+# Compiled binaries
+/dist/
+
+# Temporary directories for embedding
+/go-server/embed_build/
+/go-server/embed_ui/
+
+# IDEs and editors
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Local databases and logs
+*.db
+*.sqlite
+*.sqlite3
+*.log
+
+# Local Go binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/go-server/go-server
+/go-server/fh6-telemetry
