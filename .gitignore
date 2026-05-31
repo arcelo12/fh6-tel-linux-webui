@@ -12,7 +12,7 @@ vite.config.ts.timestamp-*
 scripts/*
 !scripts/download-map-tiles.mjs
 !scripts/build_release.go
-ui/
+
 
 # Compiled binaries
 /dist/

@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>TELEMETRY PRO | RACE-OS V2.5</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&amp;family=JetBrains+Mono:wght@500&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "inverse-on-surface": "#2f3035",
+                        "on-secondary-container": "#e5a9ff",
+                        "on-secondary-fixed": "#310048",
+                        "primary-fixed": "#7df4ff",
+                        "on-tertiary": "#690003",
+                        "secondary-container": "#7d01b1",
+                        "primary-fixed-dim": "#00dbe9",
+                        "on-secondary-fixed-variant": "#7200a3",
+                        "outline": "#3b494b",
+                        "inverse-surface": "#e2e2e8",
+                        "surface": "#0c0e12",
+                        "tertiary-fixed-dim": "#ffb4aa",
+                        "error": "#ffb4ab",
+                        "tertiary": "#fff3f1",
+                        "on-tertiary-container": "#c1000a",
+                        "primary-container": "#004f54",
+                        "on-surface-variant": "#b9cacb",
+                        "error-container": "#93000a",
+                        "surface-container-high": "#1e2024",
+                        "on-primary-fixed": "#002022",
+                        "tertiary-fixed": "#ffdad5",
+                        "on-primary": "#00363a",
+                        "background": "#0c0e12",
+                        "surface-container": "#111318",
+                        "secondary-fixed-dim": "#e9b3ff",
+                        "on-primary-fixed-variant": "#004f54",
+                        "on-primary-container": "#00f0ff",
+                        "inverse-primary": "#006970",
+                        "secondary-fixed": "#f6d9ff",
+                        "on-error-container": "#ffdad6",
+                        "surface-tint": "#00dbe9",
+                        "primary": "#00dbe9",
+                        "secondary": "#e9b3ff",
+                        "surface-container-low": "#111318",
+                        "outline-variant": "#282a2e",
+                        "surface-bright": "#37393e",
+                        "surface-dim": "#0c0e12",
+                        "tertiary-container": "#ffcec7",
+                        "on-secondary": "#510074",
+                        "surface-container-highest": "#333539",
+                        "on-tertiary-fixed-variant": "#930005",
+                        "on-tertiary-fixed": "#410001",
+                        "surface-variant": "#1e2024",
+                        "on-background": "#e2e2e8",
+                        "surface-container-lowest": "#07080a",
+                        "on-error": "#690005",
+                        "on-surface": "#e2e2e8"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "container-max": "1440px",
+                        "base": "4px",
+                        "margin-mobile": "16px",
+                        "gutter": "16px",
+                        "margin-desktop": "32px"
+                    },
+                    "fontFamily": {
+                        "data-lg": ["Space Grotesk"],
+                        "body-md": ["Inter"],
+                        "display-hero": ["Space Grotesk"],
+                        "label-mono": ["JetBrains Mono"],
+                        "headline-md": ["Space Grotesk"],
+                        "data-lg-mobile": ["Space Grotesk"],
+                        "label-sm": ["Inter"]
+                    },
+                    "fontSize": {
+                        "data-lg": ["48px", { "lineHeight": "48px", "letterSpacing": "-0.02em", "fontWeight": "500" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "display-hero": ["72px", { "lineHeight": "80px", "letterSpacing": "-0.04em", "fontWeight": "700" }],
+                        "label-mono": ["12px", { "lineHeight": "16px", "letterSpacing": "0.1em", "fontWeight": "500" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "600" }],
+                        "data-lg-mobile": ["32px", { "lineHeight": "32px", "fontWeight": "500" }],
+                        "label-sm": ["11px", { "lineHeight": "14px", "fontWeight": "600" }]
+                    }
+                },
+            },
+        }
+    </script>
+    <style>
+        .pro-panel {
+            background: rgba(17, 19, 24, 0.8);
+            border: 1px solid #3b494b;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        }
+
+        .glow-cyan {
+            filter: drop-shadow(0 0 8px rgba(0, 219, 233, 0.5));
+        }
+
+        .speed-arc-bg {
+            stroke: rgba(255, 255, 255, 0.05);
+            stroke-dasharray: 280;
+            stroke-dashoffset: 0;
+            stroke-linecap: round;
+        }
+
+        .speed-arc-active {
+            stroke: #00dbe9;
+            stroke-dasharray: 280;
+            stroke-dashoffset: 80;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.3s ease;
+        }
+
+        .hud-scanline {
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%);
+            background-size: 100% 2px;
+            pointer-events: none;
+        }
+
+        .mini-graph-path {
+            fill: none;
+            stroke: #00dbe9;
+            stroke-width: 1.5;
+            vector-effect: non-scaling-stroke;
+        }
+
+        .mini-graph-bg {
+            fill: rgba(0, 219, 233, 0.05);
+        }
+
+        .data-table-row {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+    </style>
+</head>
+
+<body class="bg-black text-on-surface w-screen h-screen overflow-hidden relative m-0 p-0">
+    <div id="dashboard-wrapper" class="bg-background text-on-surface flex flex-col absolute overflow-hidden" style="width: 1280px; height: 720px; top: 50%; left: 50%; transform-origin: center;">
+    <div class="hud-scanline absolute inset-0 z-[100] opacity-5 pointer-events-none"></div>
+    <!-- Top Navigation Bar -->
+    <header
+        class="z-50 flex justify-between items-center px-margin-desktop py-3 bg-surface-container border-b border-outline-variant">
+        <div class="flex items-center gap-gutter">
+            <span class="font-display-hero text-xl tracking-tighter text-on-surface font-bold">TELEMETRY<span
+                    class="text-primary font-light">PRO</span></span>
+            <div class="h-6 w-[1px] bg-outline-variant mx-2"></div>
+            <span class="text-sm font-medium opacity-80">2004 Honda #52 Evasive Motorsports S2000</span>
+            <div class="flex gap-2 ml-4">
+                <span
+                    class="bg-primary/20 text-primary border border-primary/30 text-[10px] px-2 py-0.5 rounded font-bold uppercase">S2
+                    888</span>
+                <span class="bg-white/5 border border-white/10 text-[10px] px-2 py-0.5 rounded font-bold">RWD</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-6">
+            <button
+                class="flex items-center gap-2 px-4 py-1.5 bg-error text-on-error rounded font-bold text-xs hover:opacity-90 transition-all uppercase tracking-wider">
+                <span class="material-symbols-outlined text-sm">fiber_manual_record</span>
+                Start Logging
+            </button>
+            <div class="flex items-center gap-4 border-l border-outline-variant pl-6">
+                <button
+                    class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors">tune</button>
+                <button
+                    class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors">settings</button>
+                <button id="btn-fullscreen" onclick="toggleFullscreen()"
+                    class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors" title="Toggle Fullscreen">fullscreen</button>
+                <div class="flex items-center gap-2">
+                    <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                    <span class="text-[10px] font-label-mono text-white/50">LIVE LINK</span>
+                </div>
+            </div>
+        </div>
+    </header>
+    <main class="flex-1 grid grid-cols-12 gap-4 p-4 overflow-hidden">
+        <!-- Left Column: Session & Vehicle Stats -->
+        <div class="col-span-3 flex flex-col gap-4">
+            <!-- Session Analysis -->
+            <div class="pro-panel rounded-lg p-4 flex-1 flex flex-col">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-[11px] font-label-mono text-primary uppercase tracking-widest">Session Analysis</h3>
+                    <span class="text-[10px] text-white/40">LAP 12/25</span>
+                </div>
+                <div class="space-y-1 mb-6">
+                    <div class="flex justify-between text-[11px] py-2 data-table-row">
+                        <span class="text-white/60 uppercase">Sector 1</span>
+                        <span class="font-label-mono">24.512 <span class="text-green-400 ml-1">-0.04</span></span>
+                    </div>
+                    <div class="flex justify-between text-[11px] py-2 data-table-row">
+                        <span class="text-white/60 uppercase">Sector 2</span>
+                        <span class="font-label-mono">31.884 <span class="text-red-400 ml-1">+0.12</span></span>
+                    </div>
+                    <div class="flex justify-between text-[11px] py-2 data-table-row">
+                        <span class="text-white/60 uppercase">Sector 3</span>
+                        <span class="font-label-mono">19.202 <span class="text-green-400 ml-1">-0.01</span></span>
+                    </div>
+                </div>
+                <div class="mt-auto">
+                    <div class="flex justify-between items-end mb-1">
+                        <span class="text-[10px] text-white/40 uppercase">Consistency Meter</span>
+                        <span class="text-xs font-bold text-primary">94.2%</span>
+                    </div>
+                    <div class="w-full h-1 bg-white/5 rounded-full overflow-hidden">
+                        <div class="h-full bg-primary" style="width: 94%;"></div>
+                    </div>
+                </div>
+            </div>
+            <!-- G-Force & Orientation -->
+            <div class="pro-panel rounded-lg p-4 h-48 flex gap-4">
+                <div class="flex-1 flex flex-col items-center">
+                    <span class="text-[9px] font-label-mono text-white/40 mb-2 uppercase">G-Force</span>
+                    <div
+                        class="w-24 h-24 rounded-full border border-outline-variant relative flex items-center justify-center bg-white/5">
+                        <div class="absolute w-full h-[1px] bg-white/10"></div>
+                        <div class="absolute h-full w-[1px] bg-white/10"></div>
+                        <div class="w-2 h-2 bg-primary rounded-full absolute shadow-[0_0_8px_#00dbe9] transition-all -translate-x-1/2 -translate-y-1/2"
+                            style="left: 65%; top: 40%;"></div>
+                    </div>
+                    <div class="mt-2 text-[10px] font-label-mono text-center">
+                        LAT <span class="text-white">1.42G</span> | LNG <span class="text-white">0.31G</span>
+                    </div>
+                </div>
+                <div class="w-[1px] bg-outline-variant h-full"></div>
+                <div class="flex-1 flex flex-col items-center">
+                    <span class="text-[9px] font-label-mono text-white/40 mb-2 uppercase">Angle</span>
+                    <div
+                        class="w-24 h-24 rounded-full border border-outline-variant relative overflow-hidden bg-white/5 flex items-center justify-center">
+                        <div class="w-16 h-[2px] bg-primary/40 rotate-[-8deg] relative">
+                            <div class="absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-3 bg-primary"></div>
+                        </div>
+                    </div>
+                    <div class="mt-2 text-[10px] font-label-mono text-center">
+                        PITCH <span class="text-white">4.2°</span> | ROLL <span class="text-white">-2.1°</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Center Column: Primary Cluster -->
+        <div class="col-span-6 flex flex-col gap-4">
+            <div class="pro-panel rounded-lg flex-1 relative flex flex-col items-center justify-center overflow-hidden">
+                <!-- Gauge Style Selector -->
+                <div class="absolute top-3 right-3 flex gap-1 z-20">
+                    <button id="btn-gauge-arc" onclick="selectGaugeStyle('arc')" 
+                        class="px-2 py-0.5 text-[9px] rounded font-label-mono font-bold uppercase transition-all bg-primary text-black">
+                        Arc
+                    </button>
+                    <button id="btn-gauge-digital" onclick="selectGaugeStyle('digital')" 
+                        class="px-2 py-0.5 text-[9px] rounded font-label-mono font-bold uppercase transition-all bg-white/5 text-white/40 hover:bg-white/10 hover:text-white">
+                        Digital
+                    </button>
+                    <button id="btn-gauge-analog" onclick="selectGaugeStyle('analog')" 
+                        class="px-2 py-0.5 text-[9px] rounded font-label-mono font-bold uppercase transition-all bg-white/5 text-white/40 hover:bg-white/10 hover:text-white">
+                        Analog
+                    </button>
+                </div>
+
+                <!-- Background Decoration (Only for arc and analog) -->
+                <div id="gauge-bg-decor" class="absolute inset-0 opacity-10 flex items-center justify-center pointer-events-none">
+                    <div class="w-[500px] h-[500px] border-[40px] border-white rounded-full"></div>
+                </div>
+
+                <!-- Arc Gauge -->
+                <div id="gauge-arc" class="relative z-10 w-full flex flex-col items-center">
+                    <!-- Gauge Stats Left -->
+                    <div class="absolute left-12 top-1/2 -translate-y-1/2 space-y-8">
+                        <div>
+                            <span class="text-[10px] font-label-mono text-white/40 uppercase block mb-1">Delta</span>
+                            <span class="text-2xl font-bold text-green-400 font-label-mono">-0.428</span>
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-label-mono text-white/40 uppercase block mb-1">Fuel</span>
+                            <span class="text-2xl font-bold text-white font-label-mono" id="fuel-val-arc">68%</span>
+                            <div class="w-24 h-1 bg-white/10 rounded-full mt-1">
+                                <div class="h-full bg-primary" id="fuel-bar-arc" style="width: 68%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Speedometer -->
+                    <div class="relative w-[340px] h-[340px]">
+                        <svg class="w-full h-full -rotate-140" viewbox="0 0 100 100">
+                            <circle class="speed-arc-bg" cx="50" cy="50" fill="none" r="45" stroke-width="4"></circle>
+                            <circle class="speed-arc-active glow-cyan" cx="50" cy="50" fill="none" r="45"
+                                stroke-width="4" id="speed-arc-element" style="stroke-dashoffset: 120;"></circle>
+                        </svg>
+                        <div class="absolute inset-0 flex flex-col items-center justify-center">
+                            <span class="text-8xl font-display-hero font-bold tracking-tighter leading-none" id="speed-val-arc">148</span>
+                            <span class="text-xs font-label-mono tracking-[0.4em] text-white/40 font-bold -mt-2">MPH</span>
+                            <div class="mt-6 flex items-center gap-4">
+                                <div class="w-12 h-12 flex items-center justify-center bg-primary/10 border border-primary/30 rounded-lg">
+                                    <span class="text-3xl font-display-hero font-bold text-primary" id="gear-val-arc">5</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Gauge Stats Right -->
+                    <div class="absolute right-12 top-1/2 -translate-y-1/2 space-y-8 text-right">
+                        <div>
+                            <span class="text-[10px] font-label-mono text-white/40 uppercase block mb-1">Tire Wear</span>
+                            <div class="flex gap-1 justify-end">
+                                <div class="w-4 h-6 border border-primary/40 bg-primary/10 rounded-sm"></div>
+                                <div class="w-4 h-6 border border-primary/40 bg-primary/10 rounded-sm"></div>
+                                <div class="w-4 h-6 border border-white/10 bg-white/5 rounded-sm"></div>
+                                <div class="w-4 h-6 border border-white/10 bg-white/5 rounded-sm"></div>
+                            </div>
+                            <span class="text-xs font-bold mt-1 block">92% AVG</span>
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-label-mono text-white/40 uppercase block mb-1">RPM</span>
+                            <span class="text-2xl font-bold text-white font-label-mono" id="rpm-val-arc">8,450</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Digital Gauge -->
+                <div id="gauge-digital" class="relative z-10 w-full flex flex-col items-center justify-center hidden">
+                    <div class="w-[480px] flex flex-col items-center justify-center py-6 px-8 bg-black/40 border border-outline-variant rounded-xl backdrop-blur-md">
+                        <!-- RPM Bar with segments -->
+                        <div class="w-full mb-6">
+                            <div class="flex justify-between text-[9px] font-label-mono text-white/40 mb-1">
+                                <span>0 RPM</span>
+                                <span class="text-primary font-bold" id="rpm-val-dig">8,450 RPM</span>
+                                <span id="rpm-max-dig">9,000</span>
+                            </div>
+                            <!-- Progress bar divided into segments -->
+                            <div class="w-full h-6 bg-white/5 border border-outline-variant rounded relative overflow-hidden flex gap-[2px] p-[2px]" id="rpm-seg-container">
+                                <!-- Generated by JS -->
+                            </div>
+                        </div>
+
+                        <!-- Central Display -->
+                        <div class="flex items-center gap-8 justify-center w-full">
+                            <!-- Speed -->
+                            <div class="text-center flex-1">
+                                <span class="text-8xl font-display-hero font-bold tracking-tighter leading-none" id="speed-val-dig">148</span>
+                                <span class="text-xs font-label-mono tracking-[0.4em] text-white/40 font-bold block -mt-1">MPH</span>
+                            </div>
+                            
+                            <!-- Divider -->
+                            <div class="w-[1px] h-20 bg-outline-variant flex-none"></div>
+
+                            <!-- Gear -->
+                            <div class="flex flex-col items-center flex-1">
+                                <span class="text-[9px] font-label-mono text-white/40 uppercase mb-1">GEAR</span>
+                                <div class="w-20 h-20 flex items-center justify-center bg-primary/10 border-2 border-primary/50 rounded-xl shadow-[0_0_15px_rgba(0,219,233,0.15)]">
+                                    <span class="text-6xl font-display-hero font-bold text-primary" id="gear-val-dig">5</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Bottom Stats -->
+                        <div class="w-full grid grid-cols-2 gap-4 mt-6 pt-4 border-t border-white/5">
+                            <div class="flex flex-col gap-1">
+                                <div class="flex justify-between text-[9px] font-label-mono text-white/40">
+                                    <span>FUEL</span>
+                                    <span class="text-white font-bold" id="fuel-val-dig">68%</span>
+                                </div>
+                                <div class="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+                                    <div class="h-full bg-primary" id="fuel-bar-dig" style="width: 68%;"></div>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center text-[10px] font-label-mono text-white/40 text-right">
+                                <div>
+                                    <span>CLASS: </span>
+                                    <span class="text-secondary font-bold" id="class-val-dig">S2 888</span>
+                                </div>
+                                <div>
+                                    <span>LAP: </span>
+                                    <span class="text-white font-bold" id="lap-val-dig">12</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analog Gauge -->
+                <div id="gauge-analog" class="relative z-10 w-full flex flex-col items-center justify-center hidden">
+                    <div class="relative w-[340px] h-[340px]">
+                        <!-- Dial face -->
+                        <svg class="w-full h-full" viewBox="0 0 100 100" id="analog-dial-svg">
+                            <!-- Outer circle -->
+                            <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1.5"></circle>
+                            <!-- Needle -->
+                            <line x1="50" y1="50" x2="50" y2="8" stroke="#00dbe9" stroke-width="2" stroke-linecap="round" class="glow-cyan" id="analog-needle" style="transform-origin: 50px 50px; transform: rotate(-140deg); transition: transform 0.1s linear;"></line>
+                        </svg>
+                        <!-- Digital readout inside the dial -->
+                        <div class="absolute inset-0 flex flex-col items-center justify-center pt-24">
+                            <span class="text-5xl font-display-hero font-bold tracking-tighter leading-none" id="speed-val-an">148</span>
+                            <span class="text-[9px] font-label-mono tracking-widest text-white/40 font-bold">MPH</span>
+                            <span class="text-xl font-display-hero font-bold text-primary bg-primary/10 border border-primary/20 rounded px-2 mt-2" id="gear-val-an">5</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bottom Bar: Controls & Pedals -->
+                <div class="absolute bottom-6 w-full px-12 flex items-end justify-between">
+                    <div class="flex-1 space-y-3 max-w-[200px]">
+                        <div class="flex items-center gap-3">
+                            <span class="text-[9px] font-label-mono text-white/40 w-8">THR</span>
+                            <div class="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
+                                <div class="h-full bg-primary" id="throttle-bar-element" style="width: 85%;"></div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-[9px] font-label-mono text-white/40 w-8">BRK</span>
+                            <div class="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
+                                <div class="h-full bg-error" id="brake-bar-element" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex gap-4">
+                        <div class="flex flex-col items-center">
+                            <span class="text-[9px] font-label-mono text-white/40 uppercase mb-1">Steering</span>
+                            <div
+                                class="w-12 h-12 rounded-full border-2 border-white/10 relative flex items-center justify-center">
+                                <div class="w-[2px] h-8 bg-primary rounded-full rotate-[15deg]" id="steering-wheel-element"></div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col items-center">
+                            <span class="text-[9px] font-label-mono text-white/40 uppercase mb-1">Boost</span>
+                            <div class="w-12 h-12 flex items-center justify-center border-2 border-white/10 rounded-lg">
+                                <span class="text-sm font-bold text-secondary" id="boost-val-element">2.1</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Right Column: Suspension & Tires -->
+        <div class="col-span-3 flex flex-col gap-4">
+            <!-- Tire Grid -->
+            <div class="pro-panel rounded-lg p-4 grid grid-cols-2 gap-4 flex-none h-auto">
+                <!-- FL -->
+                <div class="space-y-2">
+                    <div class="flex justify-between text-[9px] font-label-mono text-white/40 uppercase">
+                        <span>FL</span>
+                        <span class="text-green-400">Optimal</span>
+                    </div>
+                    <div class="bg-white/5 p-2 rounded border border-outline-variant">
+                        <div class="text-lg font-bold">82<span class="text-[10px] text-white/40 font-normal">°C</span>
+                        </div>
+                        <div class="text-sm text-primary font-label-mono">32.1 <span
+                                class="text-[8px] opacity-60 uppercase">psi</span></div>
+                    </div>
+                </div>
+                <!-- FR -->
+                <div class="space-y-2">
+                    <div class="flex justify-between text-[9px] font-label-mono text-white/40 uppercase">
+                        <span>FR</span>
+                        <span class="text-green-400">Optimal</span>
+                    </div>
+                    <div class="bg-white/5 p-2 rounded border border-outline-variant">
+                        <div class="text-lg font-bold">81<span class="text-[10px] text-white/40 font-normal">°C</span>
+                        </div>
+                        <div class="text-sm text-primary font-label-mono">31.9 <span
+                                class="text-[8px] opacity-60 uppercase">psi</span></div>
+                    </div>
+                </div>
+                <!-- RL -->
+                <div class="space-y-2">
+                    <div class="flex justify-between text-[9px] font-label-mono text-white/40 uppercase">
+                        <span>RL</span>
+                        <span class="text-primary">Warm</span>
+                    </div>
+                    <div class="bg-white/5 p-2 rounded border border-outline-variant">
+                        <div class="text-lg font-bold">89<span class="text-[10px] text-white/40 font-normal">°C</span>
+                        </div>
+                        <div class="text-sm text-primary font-label-mono">33.4 <span
+                                class="text-[8px] opacity-60 uppercase">psi</span></div>
+                    </div>
+                </div>
+                <!-- RR -->
+                <div class="space-y-2">
+                    <div class="flex justify-between text-[9px] font-label-mono text-white/40 uppercase">
+                        <span>RR</span>
+                        <span class="text-primary">Warm</span>
+                    </div>
+                    <div class="bg-white/5 p-2 rounded border border-outline-variant">
+                        <div class="text-lg font-bold">88<span class="text-[10px] text-white/40 font-normal">°C</span>
+                        </div>
+                        <div class="text-sm text-primary font-label-mono">33.2 <span
+                                class="text-[8px] opacity-60 uppercase">psi</span></div>
+                    </div>
+                </div>
+            </div>
+            <!-- Suspension Travel Real-time Graphs -->
+            <div class="pro-panel rounded-lg p-4 flex-1 flex flex-col gap-4">
+                <h3 class="text-[11px] font-label-mono text-primary uppercase tracking-widest">Suspension Travel</h3>
+                <div class="grid grid-cols-2 gap-4 flex-1">
+                    <div class="flex flex-col gap-1">
+                        <span class="text-[8px] font-label-mono text-white/30">FL TRAVEL</span>
+                        <div class="flex-1 bg-white/5 border border-outline-variant relative overflow-hidden rounded">
+                            <svg class="absolute inset-0 w-full h-full" preserveaspectratio="none" viewbox="0 0 100 40">
+                                <path class="mini-graph-bg" d="M0 40 L0 15 Q 25 10, 50 20 T 100 15 L 100 40 Z"></path>
+                                <path class="mini-graph-path" d="M0 15 Q 25 10, 50 20 T 100 15"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <span class="text-[8px] font-label-mono text-white/30">FR TRAVEL</span>
+                        <div class="flex-1 bg-white/5 border border-outline-variant relative overflow-hidden rounded">
+                            <svg class="absolute inset-0 w-full h-full" preserveaspectratio="none" viewbox="0 0 100 40">
+                                <path class="mini-graph-bg" d="M0 40 L0 18 Q 25 22, 50 15 T 100 20 L 100 40 Z"></path>
+                                <path class="mini-graph-path" d="M0 18 Q 25 22, 50 15 T 100 20"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <span class="text-[8px] font-label-mono text-white/30">RL TRAVEL</span>
+                        <div class="flex-1 bg-white/5 border border-outline-variant relative overflow-hidden rounded">
+                            <svg class="absolute inset-0 w-full h-full" preserveaspectratio="none" viewbox="0 0 100 40">
+                                <path class="mini-graph-bg" d="M0 40 L0 25 Q 25 20, 50 28 T 100 22 L 100 40 Z"></path>
+                                <path class="mini-graph-path" d="M0 25 Q 25 20, 50 28 T 100 22"></path>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <span class="text-[8px] font-label-mono text-white/30">RR TRAVEL</span>
+                        <div class="flex-1 bg-white/5 border border-outline-variant relative overflow-hidden rounded">
+                            <svg class="absolute inset-0 w-full h-full" preserveaspectratio="none" viewbox="0 0 100 40">
+                                <path class="mini-graph-bg" d="M0 40 L0 24 Q 25 28, 50 22 T 100 25 L 100 40 Z"></path>
+                                <path class="mini-graph-path" d="M0 24 Q 25 28, 50 22 T 100 25"></path>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!-- Live Track Map -->
+            <div class="pro-panel rounded-lg h-40 overflow-hidden relative group">
+                <img alt="Track Map"
+                    class="w-full h-full object-cover opacity-50 transition-transform duration-500 group-hover:scale-110"
+                    src="https://lh3.googleusercontent.com/aida/ADBb0ug2R1Tyik52NMvvOgdm53-Ib7Qmrr4yolc4X_NxP4nKWMgqU3jt3fu5pyVCd7QkGg8XcSRcueE3bjiBfkjol1F65YBRS3zs2opLOsar1ti-x6dp7gbtBL3tf1WJrKHmEnhJl2LpTAN7spbWegGvm31cxFopd39d_idDFfF8dahIG4vpaTwSOEyrgSsa47xfPkHwvQDPUiNA9nMEvUTu_n9hxOyoci7EyPdrHgXZRK3lc-kducMUIEYJNw" />
+                <div class="absolute inset-0 bg-gradient-to-t from-surface to-transparent"></div>
+                <div class="absolute top-2 left-3 flex items-center justify-between w-[calc(100%-24px)]">
+                    <span
+                        class="text-[9px] font-label-mono text-primary bg-primary/10 px-2 py-0.5 rounded border border-primary/20 uppercase">Live
+                        Circuit</span>
+                    <div class="flex gap-1">
+                        <button class="w-5 h-5 bg-white/10 hover:bg-white/20 rounded flex items-center justify-center">
+                            <span class="material-symbols-outlined text-[12px]">add</span>
+                        </button>
+                        <button class="w-5 h-5 bg-white/10 hover:bg-white/20 rounded flex items-center justify-center">
+                            <span class="material-symbols-outlined text-[12px]">remove</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="absolute bottom-2 left-3">
+                    <span class="text-[10px] text-white/60 font-bold block">PACIFIC APEX</span>
+                    <span class="text-[8px] text-white/30 font-label-mono uppercase">T4 - Hairpin Entry</span>
+                </div>
+            </div>
+        </div>
+    </main>
+    <!-- Footer: Lap History & Timing -->
+    <footer
+        class="bg-surface-container-highest border-t border-outline-variant px-margin-desktop py-4 flex items-center justify-between">
+        <div class="flex gap-12">
+            <div class="flex flex-col">
+                <span class="text-[9px] font-label-mono text-white/40 uppercase mb-1">Current Lap</span>
+                <span class="text-2xl font-bold font-label-mono">01:24.562</span>
+            </div>
+            <div class="flex flex-col">
+                <span class="text-[9px] font-label-mono text-white/40 uppercase mb-1">Last Lap</span>
+                <span class="text-2xl font-bold font-label-mono text-white/80">01:24.990</span>
+            </div>
+            <div class="flex flex-col">
+                <span class="text-[9px] font-label-mono text-white/40 uppercase mb-1">Session Best</span>
+                <span class="text-2xl font-bold font-label-mono text-secondary">01:23.112</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-8 pr-4">
+            <div class="text-right">
+                <span class="text-[9px] font-label-mono text-white/40 uppercase block">Total Distance</span>
+                <span class="text-sm font-bold">48.2 <span class="text-[10px] opacity-50">MI</span></span>
+            </div>
+            <div class="text-right">
+                <span class="text-[9px] font-label-mono text-white/40 uppercase block">Runtime</span>
+                <span class="text-sm font-bold">00:45:12</span>
+            </div>
+            <button
+                class="flex items-center gap-2 px-6 py-2 bg-white/5 border border-outline hover:bg-white/10 transition-all rounded-lg text-xs font-bold uppercase tracking-wider">
+                <span class="material-symbols-outlined text-sm">analytics</span>
+                Deep Analytics
+            </button>
+        </div>
+    </footer>
+    <script>
+        // Scaling Dashboard
+        function resizeDashboard() {
+            const wrapper = document.getElementById('dashboard-wrapper');
+            const scale = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+            wrapper.style.transform = `translate(-50%, -50%) scale(${scale})`;
+        }
+        window.addEventListener('resize', resizeDashboard);
+        resizeDashboard();
+
+        // Fullscreen Toggle Logic
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen().catch(() => {});
+                }
+            }
+        }
+
+        document.addEventListener('fullscreenchange', () => {
+            const btnFs = document.getElementById('btn-fullscreen');
+            if (btnFs) {
+                if (document.fullscreenElement) {
+                    btnFs.textContent = 'fullscreen_exit';
+                    btnFs.title = 'Exit Fullscreen';
+                } else {
+                    btnFs.textContent = 'fullscreen';
+                    btnFs.title = 'Toggle Fullscreen';
+                }
+            }
+        });
+
+        // Gauge Style State
+        let gaugeStyle = localStorage.getItem('gaugeStyle') || 'arc';
+
+        function selectGaugeStyle(style) {
+            gaugeStyle = style;
+            localStorage.setItem('gaugeStyle', style);
+            applyGaugeStyle();
+        }
+
+        function applyGaugeStyle() {
+            const btnArc = document.getElementById('btn-gauge-arc');
+            const btnDig = document.getElementById('btn-gauge-digital');
+            const btnAn = document.getElementById('btn-gauge-analog');
+
+            const gaugeArc = document.getElementById('gauge-arc');
+            const gaugeDig = document.getElementById('gauge-digital');
+            const gaugeAn = document.getElementById('gauge-analog');
+            const bgDecor = document.getElementById('gauge-bg-decor');
+
+            // Toggle buttons classes
+            const activeClass = 'bg-primary text-black';
+            const inactiveClass = 'bg-white/5 text-white/40 hover:bg-white/10 hover:text-white';
+
+            [btnArc, btnDig, btnAn].forEach(btn => {
+                if (btn) {
+                    btn.className = btn.className.replace(activeClass, '').replace(inactiveClass, '').trim() + ' ';
+                }
+            });
+
+            if (gaugeStyle === 'arc') {
+                if (btnArc) btnArc.className += activeClass;
+                if (btnDig) btnDig.className += inactiveClass;
+                if (btnAn) btnAn.className += inactiveClass;
+                if (gaugeArc) gaugeArc.classList.remove('hidden');
+                if (gaugeDig) gaugeDig.classList.add('hidden');
+                if (gaugeAn) gaugeAn.classList.add('hidden');
+                if (bgDecor) bgDecor.classList.remove('hidden');
+            } else if (gaugeStyle === 'digital') {
+                if (btnArc) btnArc.className += inactiveClass;
+                if (btnDig) btnDig.className += activeClass;
+                if (btnAn) btnAn.className += inactiveClass;
+                if (gaugeArc) gaugeArc.classList.add('hidden');
+                if (gaugeDig) gaugeDig.classList.remove('hidden');
+                if (gaugeAn) gaugeAn.classList.add('hidden');
+                if (bgDecor) bgDecor.classList.add('hidden');
+                initDigitalSegments();
+            } else if (gaugeStyle === 'analog') {
+                if (btnArc) btnArc.className += inactiveClass;
+                if (btnDig) btnDig.className += inactiveClass;
+                if (btnAn) btnAn.className += activeClass;
+                if (gaugeArc) gaugeArc.classList.add('hidden');
+                if (gaugeDig) gaugeDig.classList.add('hidden');
+                if (gaugeAn) gaugeAn.classList.remove('hidden');
+                if (bgDecor) bgDecor.classList.remove('hidden');
+                initAnalogDial();
+            }
+        }
+
+        // Ticks for Analog Dial
+        function initAnalogDial() {
+            const svg = document.getElementById('analog-dial-svg');
+            if (!svg || svg.dataset.initialized) return;
+            
+            // Generate ticks from 0 to 10
+            for (let i = 0; i <= 10; i++) {
+                const angle = -140 + i * 28;
+                const rad = (angle - 90) * Math.PI / 180;
+                const x1 = 50 + 40 * Math.cos(rad);
+                const y1 = 50 + 40 * Math.sin(rad);
+                const x2 = 50 + 45 * Math.cos(rad);
+                const y2 = 50 + 45 * Math.sin(rad);
+                const tx = 50 + 34 * Math.cos(rad);
+                const ty = 50 + 34 * Math.sin(rad);
+                
+                // Line tick
+                const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                line.setAttribute("x1", x1);
+                line.setAttribute("y1", y1);
+                line.setAttribute("x2", x2);
+                line.setAttribute("y2", y2);
+                line.setAttribute("stroke", i >= 8 ? "#ffb4ab" : "rgba(255,255,255,0.3)");
+                line.setAttribute("stroke-width", "0.8");
+                svg.appendChild(line);
+                
+                // Text label
+                const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                text.setAttribute("x", tx);
+                text.setAttribute("y", ty);
+                text.setAttribute("fill", i >= 8 ? "#ffb4ab" : "rgba(255,255,255,0.5)");
+                text.setAttribute("font-size", "5");
+                text.setAttribute("font-family", "Space Grotesk");
+                text.setAttribute("font-weight", "bold");
+                text.setAttribute("text-anchor", "middle");
+                text.setAttribute("dominant-baseline", "middle");
+                text.textContent = i;
+                svg.appendChild(text);
+            }
+
+            // Redline arc path
+            const redline = document.createElementNS("http://www.w3.org/2000/svg", "path");
+            redline.setAttribute("d", "M 75.7 82.3 A 45 45 0 0 0 84.5 21.1");
+            redline.setAttribute("fill", "none");
+            redline.setAttribute("stroke", "#ffb4ab");
+            redline.setAttribute("stroke-width", "3");
+            redline.setAttribute("stroke-opacity", "0.3");
+            svg.appendChild(redline);
+            
+            // Put needle on top
+            const needle = document.getElementById('analog-needle');
+            if (needle) svg.appendChild(needle);
+            
+            // Center Caps
+            const cap1 = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            cap1.setAttribute("cx", "50");
+            cap1.setAttribute("cy", "50");
+            cap1.setAttribute("r", "4");
+            cap1.setAttribute("fill", "#00dbe9");
+            svg.appendChild(cap1);
+            
+            const cap2 = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            cap2.setAttribute("cx", "50");
+            cap2.setAttribute("cy", "50");
+            cap2.setAttribute("r", "1.5");
+            cap2.setAttribute("fill", "#0c0e12");
+            svg.appendChild(cap2);
+
+            svg.dataset.initialized = "true";
+        }
+
+        // Digital segments
+        function initDigitalSegments() {
+            const container = document.getElementById('rpm-seg-container');
+            if (!container || container.dataset.initialized) return;
+            
+            container.innerHTML = '';
+            for (let i = 0; i < 20; i++) {
+                const seg = document.createElement('div');
+                seg.className = `flex-1 h-full rounded-sm bg-white/5 transition-all duration-75 segment-${i}`;
+                container.appendChild(seg);
+            }
+            container.dataset.initialized = "true";
+        }
+
+        function updateDigitalSegments(rpmPct) {
+            for (let i = 0; i < 20; i++) {
+                const seg = document.querySelector(`.segment-${i}`);
+                if (!seg) continue;
+                const segmentVal = (i / 20) * 100;
+                const isRedline = i >= 16;
+                if (rpmPct >= segmentVal) {
+                    if (isRedline) {
+                        seg.className = `flex-1 h-full rounded-sm transition-all duration-75 segment-${i} bg-error shadow-[0_0_8px_#ffb4ab]`;
+                    } else {
+                        seg.className = `flex-1 h-full rounded-sm transition-all duration-75 segment-${i} bg-primary shadow-[0_0_8px_#00dbe9]`;
+                    }
+                } else {
+                    seg.className = `flex-1 h-full rounded-sm bg-white/5 transition-all duration-75 segment-${i}`;
+                }
+            }
+            
+            let overlay = document.getElementById('shift-light-overlay');
+            if (rpmPct >= 92) {
+                if (!overlay) {
+                    overlay = document.createElement('div');
+                    overlay.id = 'shift-light-overlay';
+                    overlay.className = 'absolute inset-0 bg-error/20 border border-error animate-pulse flex items-center justify-center';
+                    overlay.innerHTML = '<span class="text-[10px] font-bold text-error tracking-wider uppercase">SHIFT LIGHT</span>';
+                    document.getElementById('rpm-seg-container').appendChild(overlay);
+                }
+            } else if (overlay) {
+                overlay.remove();
+            }
+        }
+
+        // Apply on load
+        applyGaugeStyle();
+
+        // WebSocket Link
+        const ws = new WebSocket(`ws://${window.location.host}/ws`);
+        
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            
+            // Calculate speed and rpm values (using MPH for contoh.html)
+            const speed = Math.round(data.speedMs * 2.23694); 
+            const unit = 'MPH';
+            const rpm = Math.round(data.currentEngineRpm);
+            const rpmPct = data.engineMaxRpm > 0 ? (data.currentEngineRpm / data.engineMaxRpm) * 100 : 0;
+            const gear = data.gear === 0 ? "R" : data.gear === 11 ? "N" : (data.gear || "-");
+            const fuel = Math.round(data.fuel * 100);
+
+            // 1. Update Speed, Gear & RPM based on gaugeStyle
+            if (gaugeStyle === 'arc') {
+                const speedEl = document.getElementById('speed-val-arc');
+                if (speedEl) speedEl.innerText = speed;
+
+                const gearEl = document.getElementById('gear-val-arc');
+                if (gearEl) gearEl.innerText = gear;
+
+                const rpmEl = document.getElementById('rpm-val-arc');
+                if (rpmEl) rpmEl.innerText = rpm.toLocaleString();
+
+                const fuelEl = document.getElementById('fuel-val-arc');
+                if (fuelEl) fuelEl.innerText = `${fuel}%`;
+
+                const fuelBar = document.getElementById('fuel-bar-arc');
+                if (fuelBar) fuelBar.style.width = `${fuel}%`;
+
+                const arc = document.getElementById('speed-arc-element');
+                if (arc) {
+                    arc.style.strokeDashoffset = 280 - (280 * (rpmPct / 100));
+                }
+            } else if (gaugeStyle === 'digital') {
+                const speedEl = document.getElementById('speed-val-dig');
+                if (speedEl) speedEl.innerText = speed;
+
+                const gearEl = document.getElementById('gear-val-dig');
+                if (gearEl) gearEl.innerText = gear;
+
+                const rpmEl = document.getElementById('rpm-val-dig');
+                if (rpmEl) rpmEl.innerText = `${rpm.toLocaleString()} RPM`;
+
+                const rpmMaxEl = document.getElementById('rpm-max-dig');
+                if (rpmMaxEl) rpmMaxEl.innerText = Math.round(data.engineMaxRpm).toLocaleString();
+
+                const fuelEl = document.getElementById('fuel-val-dig');
+                if (fuelEl) fuelEl.innerText = `${fuel}%`;
+
+                const fuelBar = document.getElementById('fuel-bar-dig');
+                if (fuelBar) fuelBar.style.width = `${fuel}%`;
+
+                const classEl = document.getElementById('class-val-dig');
+                if (classEl && data.carClass !== undefined) {
+                    const classChar = String.fromCharCode(data.carClass);
+                    classEl.innerText = `${classChar} ${data.carPi}`;
+                }
+
+                const lapEl = document.getElementById('lap-val-dig');
+                if (lapEl) lapEl.innerText = data.lapNumber + 1;
+
+                updateDigitalSegments(rpmPct);
+            } else if (gaugeStyle === 'analog') {
+                const speedEl = document.getElementById('speed-val-an');
+                if (speedEl) speedEl.innerText = speed;
+
+                const gearEl = document.getElementById('gear-val-an');
+                if (gearEl) gearEl.innerText = gear;
+
+                const needle = document.getElementById('analog-needle');
+                if (needle) {
+                    const angle = -140 + (rpmPct / 100) * 280;
+                    needle.style.transform = `rotate(${angle}deg)`;
+                }
+            }
+
+            // 2. Update Bottom Pedal Bars
+            const brakeBar = document.getElementById('brake-bar-element');
+            if (brakeBar && data.brake !== undefined) {
+                brakeBar.style.width = `${(data.brake / 255) * 100}%`;
+            }
+
+            const throttleBar = document.getElementById('throttle-bar-element');
+            if (throttleBar && data.throttle !== undefined) {
+                throttleBar.style.width = `${(data.throttle / 255) * 100}%`;
+            }
+
+            const steeringWheel = document.getElementById('steering-wheel-element');
+            if (steeringWheel && data.steer !== undefined) {
+                steeringWheel.style.transform = `rotate(${data.steer * 90}deg)`;
+            }
+
+            const boostVal = document.getElementById('boost-val-element');
+            if (boostVal && data.boost !== undefined) {
+                boostVal.innerText = data.boost.toFixed(1);
+            }
+        };
+    </script>
+</body>
+
+</html>
