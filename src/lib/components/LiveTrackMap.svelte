@@ -72,7 +72,7 @@
 
 <style>
   .map-widget {
-    height: 100%;
+    height: 220px;
     border-top: 1px solid var(--bd-subtle);
     padding: 0.4rem;
     display: flex;

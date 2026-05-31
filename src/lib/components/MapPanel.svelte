@@ -14,6 +14,7 @@
     fixedTrace = false,
     settings,
     compact = false,
+    multiplayers = null,
   }: {
     points: TelemetryPacket[];
     currentIndex?: number;
@@ -24,6 +25,7 @@
     fixedTrace?: boolean;
     settings: AppSettings;
     compact?: boolean;
+    multiplayers?: { slotNumber: number; name: string; color: string; packet: TelemetryPacket }[] | null;
   } = $props();
 
   const LAP_COLORS = [
@@ -68,7 +70,21 @@
   let traceLayer: LayerGroup | null = null;
 
   onMount(async () => {
-    if (!usable || !host) return;
+    await initMap();
+    redraw();
+  });
+
+  // Re-initialize map if settings become available after mount
+  // (e.g. spectator page loads settings async after component mounts)
+  $effect(() => {
+    void cfg; // track settings changes
+    if (!map && host && usable) {
+      initMap().then(() => redraw());
+    }
+  });
+
+  async function initMap() {
+    if (map || !usable || !host) return;
     L = await import('leaflet');
     await import('leaflet/dist/leaflet.css');
 
@@ -78,26 +94,21 @@
       zoomControl: !compact,
       minZoom: cfg.minZoom,
       maxZoom: cfg.viewMaxZoom,
-      // Hard-stop at maxBounds (no rubber-banding past the track).
       maxBoundsViscosity: 1.0,
     });
     tiles = L.tileLayer(cfg.tileUrl, {
       minZoom: cfg.minZoom,
       maxZoom: cfg.viewMaxZoom,
-      // Tiles only exist up to the native zoom; beyond it Leaflet upscales the
-      // last level so the user can still zoom further in.
       maxNativeZoom: cfg.maxZoom,
       tileSize: cfg.tileSize,
       noWrap: true,
     }).addTo(map);
     traceLayer = L.layerGroup().addTo(map);
-    // Open at the configured default view.
     map.setView(
       map.unproject(L.point(cfg.defaultCenter[0], cfg.defaultCenter[1]), cfg.maxZoom),
       cfg.defaultZoom
     );
-    redraw();
-  });
+  }
 
   onDestroy(() => {
     map?.remove();
@@ -113,9 +124,9 @@
     traceLayer.clearLayers();
 
     const valid = points.filter((p) => p.positionX !== 0 || p.positionZ !== 0);
-    if (valid.length === 0) return;
 
-    if (drawLine && valid.length > 1) {
+    // Draw polyline trace (solo/replay mode)
+    if (valid.length > 1 && drawLine) {
       // One polyline per lap so each lap carries its own colour.
       let seg: ReturnType<typeof pixToLatLng>[] = [];
       let lap = valid[0].lapNumber;
@@ -139,50 +150,76 @@
       flush();
     }
 
-    const mi =
-      currentIndex >= 0 && currentIndex < points.length
-        ? currentIndex
-        : valid.length - 1;
-    const mp = points[mi] ?? valid[valid.length - 1];
-    if (mp && (mp.positionX !== 0 || mp.positionZ !== 0)) {
-      const ll = pixToLatLng(worldToPix(mp));
-      // Heading from world-space yaw, matching CompassBar (0° = north). The map
-      // is north-up, so a north-pointing arrow rotated clockwise by the
-      // heading aligns with the compass.
-      const headingDeg = ((mp.yaw * 180) / Math.PI) % 360;
-      const sz = compact ? 22 : 28;
-      const icon = L.divIcon({
-        className: 'player-arrow',
-        html:
-          `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24">` +
-          `<path transform="rotate(${headingDeg} 12 12)" ` +
-          `d="M12 2 L19 21 L12 15 L5 21 Z" fill="#fbbf24" ` +
-          `stroke="#000" stroke-width="1.5" stroke-linejoin="round"/></svg>`,
-        iconSize: [sz, sz],
-        iconAnchor: [sz / 2, sz / 2],
-      });
-      L.marker(ll, { icon, interactive: false }).addTo(traceLayer);
+    if (multiplayers && multiplayers.length > 0) {
+      // Draw markers for each multiplayer participant
+      const activeLatLngs: ReturnType<typeof pixToLatLng>[] = [];
+      for (const p of multiplayers) {
+        if (p.packet && (p.packet.positionX !== 0 || p.packet.positionZ !== 0)) {
+          const ll = pixToLatLng(worldToPix(p.packet));
+          activeLatLngs.push(ll);
 
-      if (fixedTrace && valid.length > 1) {
-        // Replay / recorded view: fit the whole track once, then lock the
-        // camera to that extent — the user may zoom in & pan, but can't zoom
-        // out past the full-track view or pan off the track.
-        if (!boundsApplied) {
+          const headingDeg = ((p.packet.yaw * 180) / Math.PI) % 360;
+          const sz = compact ? 20 : 26;
+          const icon = L.divIcon({
+            className: 'player-arrow-multi',
+            html: `<div style="position: relative; display: flex; flex-direction: column; align-items: center; pointer-events: none;">` +
+                  `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24">` +
+                  `<path transform="rotate(${headingDeg} 12 12)" ` +
+                  `d="M12 2 L19 21 L12 15 L5 21 Z" fill="${p.color}" ` +
+                  `stroke="#000" stroke-width="1.5" stroke-linejoin="round"/></svg>` +
+                  `<span style="background: rgba(10, 15, 30, 0.85); color: #fff; font-size: 8px; font-weight: 700; border-radius: 4px; padding: 1px 4px; white-space: nowrap; margin-top: 1px; border: 1px solid ${p.color}; max-width: 70px; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 2px 4px rgba(0,0,0,0.5);">${p.name}</span>` +
+                  `</div>`,
+            iconSize: [sz, sz + 15],
+            iconAnchor: [sz / 2, sz / 2],
+          });
+          L!.marker(ll, { icon, interactive: false }).addTo(traceLayer!);
+        }
+      }
+
+      // Frame all active drivers on the map
+      if (activeLatLngs.length > 0) {
+        clearBounds();
+        const b = L.latLngBounds(activeLatLngs);
+        map.fitBounds(b, { padding: [30, 30], maxZoom: cfg.defaultZoom });
+      }
+    } else {
+      const mi =
+        currentIndex >= 0 && currentIndex < points.length
+          ? currentIndex
+          : valid.length - 1;
+      const mp = points[mi] ?? valid[valid.length - 1];
+      if (mp && (mp.positionX !== 0 || mp.positionZ !== 0)) {
+        const ll = pixToLatLng(worldToPix(mp));
+        const headingDeg = ((mp.yaw * 180) / Math.PI) % 360;
+        const sz = compact ? 22 : 28;
+        const icon = L.divIcon({
+          className: 'player-arrow',
+          html:
+            `<svg width="${sz}" height="${sz}" viewBox="0 0 24 24">` +
+            `<path transform="rotate(${headingDeg} 12 12)" ` +
+            `d="M12 2 L19 21 L12 15 L5 21 Z" fill="#fbbf24" ` +
+            `stroke="#000" stroke-width="1.5" stroke-linejoin="round"/></svg>`,
+          iconSize: [sz, sz],
+          iconAnchor: [sz / 2, sz / 2],
+        });
+        L.marker(ll, { icon, interactive: false }).addTo(traceLayer);
+
+        if (fixedTrace && valid.length > 1) {
+          if (!boundsApplied) {
+            const b = L.latLngBounds(valid.map((p) => pixToLatLng(worldToPix(p))));
+            map.fitBounds(b, { padding: [20, 20], maxZoom: cfg.defaultZoom });
+            map.setMinZoom(map.getZoom());
+            map.setMaxBounds(b.pad(0.05));
+            boundsApplied = true;
+          }
+        } else if (drawLine && valid.length > 1) {
+          clearBounds();
           const b = L.latLngBounds(valid.map((p) => pixToLatLng(worldToPix(p))));
           map.fitBounds(b, { padding: [20, 20], maxZoom: cfg.defaultZoom });
-          map.setMinZoom(map.getZoom());
-          map.setMaxBounds(b.pad(0.05));
-          boundsApplied = true;
+        } else {
+          clearBounds();
+          map.setView(ll, map.getZoom(), { animate: false });
         }
-      } else if (drawLine && valid.length > 1) {
-        // Live recording: track grows, keep the whole thing framed.
-        clearBounds();
-        const b = L.latLngBounds(valid.map((p) => pixToLatLng(worldToPix(p))));
-        map.fitBounds(b, { padding: [20, 20], maxZoom: cfg.defaultZoom });
-      } else {
-        // Free-roam: follow the player at the user's current zoom.
-        clearBounds();
-        map.setView(ll, map.getZoom(), { animate: false });
       }
     }
   }
@@ -201,6 +238,9 @@
     void points;
     void currentIndex;
     void drawLine;
+    // IMPORTANT: multiplayers must be tracked here too so the map redraws
+    // when player positions update in spectator/lobby mode.
+    void multiplayers;
     if (map) redraw();
   });
 </script>
@@ -230,7 +270,7 @@
     font: inherit;
   }
   /* Strip Leaflet's default divIcon box so only the arrow shows. */
-  :global(.player-arrow) {
+  :global(.player-arrow), :global(.player-arrow-multi) {
     background: none;
     border: none;
   }

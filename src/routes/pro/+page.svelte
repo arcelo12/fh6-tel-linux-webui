@@ -9,6 +9,7 @@
   import SessionViewer from '$lib/components/SessionViewer.svelte';
   import SettingsModal from '$lib/components/SettingsModal.svelte';
   import ReplayBar from '$lib/components/ReplayBar.svelte';
+  import TelemetryConfirmation from '$lib/components/TelemetryConfirmation.svelte';
 
   let showSessions = $state(false);
   let showSettings = $state(false);
@@ -890,3 +891,5 @@
 {#if showSettings}
   <SettingsModal onClose={() => (showSettings = false)} />
 {/if}
+
+<TelemetryConfirmation onOpenSettings={() => (showSettings = true)} />

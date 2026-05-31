@@ -3,8 +3,10 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"math"
 	"sync"
+	"time"
 )
 
 const rewindWindowMs = 30000
@@ -139,8 +141,14 @@ func (s *SessionManager) BestForClose() float64 {
 }
 
 // Database Helpers
-func openSession(db *sql.DB, startedAt int64, carOrdinal int32, carClass int32, carPi int32) int64 {
-	res, err := db.Exec("INSERT INTO sessions (started_at, car_ordinal, car_class, car_pi) VALUES (?, ?, ?, ?)", startedAt, carOrdinal, carClass, carPi)
+func openSession(db *sql.DB, startedAt int64, carOrdinal int32, carClass int32, carPi int32, userID *int64) int64 {
+	var res sql.Result
+	var err error
+	if userID != nil {
+		res, err = db.Exec("INSERT INTO sessions (started_at, car_ordinal, car_class, car_pi, user_id) VALUES (?, ?, ?, ?, ?)", startedAt, carOrdinal, carClass, carPi, *userID)
+	} else {
+		res, err = db.Exec("INSERT INTO sessions (started_at, car_ordinal, car_class, car_pi) VALUES (?, ?, ?, ?)", startedAt, carOrdinal, carClass, carPi)
+	}
 	if err != nil {
 		fmt.Printf("Error inserting session: %v\n", err)
 		return -1
@@ -165,7 +173,90 @@ func insertLap(db *sql.DB, sessionId int64, lapNumber int, lapTime float64) {
 	db.Exec("INSERT INTO session_laps (session_id, lap_number, lap_time) VALUES (?, ?, ?) ON CONFLICT(session_id, lap_number) DO UPDATE SET lap_time=excluded.lap_time", sessionId, lapNumber, lapTime)
 }
 
+type SoloQueuedPacket struct {
+	SessionID   int64
+	TimestampMs uint32
+	Data        []byte
+}
+
+var soloPacketQueue = make(chan *SoloQueuedPacket, 500000) // ~150MB RAM buffer
+
 func insertPacket(db *sql.DB, sessionId int64, timestampMs uint32, data []byte) {
-	db.Exec("INSERT INTO session_packets (session_id, timestamp_ms, data) VALUES (?, ?, ?)", sessionId, timestampMs, data)
-	db.Exec("UPDATE sessions SET packet_count = packet_count + 1 WHERE id=?", sessionId)
+	select {
+	case soloPacketQueue <- &SoloQueuedPacket{
+		SessionID:   sessionId,
+		TimestampMs: timestampMs,
+		Data:        data,
+	}:
+	default:
+		// Queue full, drop packet to avoid blocking UDP thread
+	}
+}
+
+// Background Worker: High-Performance Database Queue Writer for Solo Sessions
+func StartSoloDBWorker(dbConn *sql.DB) {
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
+
+	var batch []*SoloQueuedPacket
+
+	flush := func(records []*SoloQueuedPacket) {
+		if len(records) == 0 {
+			return
+		}
+
+		tx, err := dbConn.Begin()
+		if err != nil {
+			log.Printf("[Solo DB Batch] Transaction start failed: %v", err)
+			return
+		}
+
+		stmt, err := tx.Prepare("INSERT INTO session_packets (session_id, timestamp_ms, data) VALUES (?, ?, ?)")
+		if err != nil {
+			log.Printf("[Solo DB Batch] Statement prepare failed: %v", err)
+			tx.Rollback()
+			return
+		}
+		defer stmt.Close()
+
+		packetCounts := make(map[int64]int)
+		for _, p := range records {
+			_, err = stmt.Exec(p.SessionID, p.TimestampMs, p.Data)
+			if err != nil {
+				log.Printf("[Solo DB Batch] Insert execute failed: %v", err)
+			} else {
+				packetCounts[p.SessionID]++
+			}
+		}
+
+		// Update counts efficiently
+		countStmt, err := tx.Prepare("UPDATE sessions SET packet_count = packet_count + ? WHERE id=?")
+		if err == nil {
+			for sId, count := range packetCounts {
+				countStmt.Exec(count, sId)
+			}
+			countStmt.Close()
+		}
+
+		if err := tx.Commit(); err != nil {
+			log.Printf("[Solo DB Batch] Transaction commit failed: %v", err)
+			tx.Rollback()
+		}
+	}
+
+	for {
+		select {
+		case p := <-soloPacketQueue:
+			batch = append(batch, p)
+			if len(batch) >= 50000 { // Flush at 50k packets to utilize bulk I/O efficiently
+				flush(batch)
+				batch = make([]*SoloQueuedPacket, 0, 50000)
+			}
+		case <-ticker.C:
+			if len(batch) > 0 {
+				flush(batch)
+				batch = make([]*SoloQueuedPacket, 0, 50000)
+			}
+		}
+	}
 }

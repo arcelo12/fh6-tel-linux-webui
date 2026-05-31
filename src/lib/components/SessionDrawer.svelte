@@ -7,8 +7,6 @@
   let { onClose, onOpen }: { onClose: () => void; onOpen: (s: SessionRow) => void } =
     $props();
 
-  onMount(loadSessions);
-
   function formatTime(seconds: number) {
     if (!seconds || seconds <= 0) return '—';
     const m = Math.floor(seconds / 60);
@@ -39,12 +37,56 @@
       return;
     await clearAllSessions();
   }
+
+  let sortOption = $state<'date_desc' | 'date_asc' | 'lap_asc' | 'length_desc'>('date_desc');
+
+  onMount(() => {
+    loadSessions();
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('session_sort_pref');
+      if (saved === 'date_desc' || saved === 'date_asc' || saved === 'lap_asc' || saved === 'length_desc') {
+        sortOption = saved;
+      }
+    }
+  });
+
+  $effect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('session_sort_pref', sortOption);
+    }
+  });
+
+  let sortedSessions = $derived.by(() => {
+    return [...$sessions].sort((a, b) => {
+      // Bookmarks always at top
+      if (a.bookmarked && !b.bookmarked) return -1;
+      if (!a.bookmarked && b.bookmarked) return 1;
+
+      switch (sortOption) {
+        case 'date_asc': return a.startedAt - b.startedAt;
+        case 'lap_asc':
+          const aLap = a.bestLap && a.bestLap > 0 ? a.bestLap : Infinity;
+          const bLap = b.bestLap && b.bestLap > 0 ? b.bestLap : Infinity;
+          return aLap - bLap;
+        case 'length_desc': return b.packetCount - a.packetCount;
+        case 'date_desc':
+        default:
+          return b.startedAt - a.startedAt;
+      }
+    });
+  });
 </script>
 
 <div class="drawer">
   <div class="drawer-header">
     <h3>Sessions</h3>
     <div class="header-actions">
+      <select bind:value={sortOption} class="sort-select">
+        <option value="date_desc">Newest First</option>
+        <option value="date_asc">Oldest First</option>
+        <option value="lap_asc">Best Lap</option>
+        <option value="length_desc">Longest (Packets)</option>
+      </select>
       <button
         class="clear-all"
         disabled={$sessions.length === 0}
@@ -58,7 +100,7 @@
 
   <div class="drawer-body">
     <div class="session-list">
-      {#each $sessions as session}
+      {#each sortedSessions as session}
         <div
           class="session-row"
           role="button"
@@ -78,7 +120,7 @@
             <span class="session-name">
               {session.name ?? carName(session.carOrdinal)}
             </span>
-            <span class="session-date">{formatDate(session.startedAt)}</span>
+            <span class="session-date">{formatDate(session.startedAt)} • {session.packetCount} pkts</span>
             <span class="session-best">Best: {formatTime(session.bestLap ?? 0)}</span>
           </div>
           <button class="delete-btn" onclick={(e) => handleDelete(session, e)}>🗑</button>
@@ -105,6 +147,11 @@
   .header-actions { display: flex; align-items: center; gap: 0.6rem; }
   .drawer-header .close { background: none; border: none; color: var(--tx-dim); font-size: 1.1rem; cursor: pointer; }
   .drawer-header .close:hover { color: var(--tx-hi); }
+  .sort-select {
+    background: var(--bg-body); border: 1px solid var(--bd-muted); color: var(--tx-mid);
+    padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.72rem; cursor: pointer; outline: none;
+  }
+  .sort-select:hover { border-color: var(--bd-dim); color: var(--tx-hi); }
   .clear-all {
     background: none; border: 1px solid var(--bd-muted); color: var(--tx-dim);
     font-size: 0.72rem; padding: 0.25rem 0.55rem; border-radius: 4px; cursor: pointer;
