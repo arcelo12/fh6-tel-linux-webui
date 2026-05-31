@@ -23,18 +23,24 @@ Real-time telemetry dashboard for Forza Horizon 6. Displays speed, RPM, heading,
 
 Download the appropriate binary file for your operating system from the [Releases](https://github.com/arcelo12/fh6-tel-linux-webui/releases/latest) page and run it. No installations or external assets are required!
 
-* **Windows:** Double-click `fh6-telemetry-windows-amd64.exe` to run.
+**Note: Starting in v1.3, we provide two types of binaries:**
+* **`fh6-telemetry-multi-*` (Full Version):** Includes Multiplayer Lobbies, Pro Dashboard, Caster UI, Admin Panel, and supports up to 100 simultaneous racers.
+* **`fh6-telemetry-solo-*` (Minimal Version):** A lightweight version dedicated for solo racing. Does not include multiplayer features and is highly optimized for minimal memory footprint.
+
+Choose the binary that matches your needs and operating system:
+
+* **Windows:** Double-click the `.exe` to run.
 * **Linux:** Make it executable and run it:
   ```bash
-  chmod +x fh6-telemetry-linux-amd64
-  ./fh6-telemetry-linux-amd64
+  chmod +x fh6-telemetry-multi-linux-amd64
+  ./fh6-telemetry-multi-linux-amd64
   ```
 * **macOS:** Make the binary for your architecture executable and run it:
   ```bash
-  chmod +x fh6-telemetry-darwin-*
-  ./fh6-telemetry-darwin-amd64    # For Intel Macs
+  chmod +x fh6-telemetry-multi-darwin-*
+  ./fh6-telemetry-multi-darwin-amd64    # For Intel Macs
   # OR
-  ./fh6-telemetry-darwin-arm64    # For Apple Silicon (M1/M2/M3)
+  ./fh6-telemetry-multi-darwin-arm64    # For Apple Silicon (M1/M2/M3)
   ```
 
 ## Forza Horizon 6 Setup
@@ -42,8 +48,8 @@ Download the appropriate binary file for your operating system from the [Release
 1. In FH6, go to **Settings → HUD and Gameplay**
 2. Scroll to the **DATA OUT** section
 3. Set **Data Out** to **On**
-4. Set **Data Out IP Address** to `127.0.0.1`
-5. Set **Data Out IP Port** to `20440` (or your custom port from the app's Settings)
+4. Set **Data Out IP Address** to `127.0.0.1` (or the server IP if using Multiplayer Lobbies)
+5. Set **Data Out IP Port** to `20440` (or your assigned user port for Multiplayer)
 
 The dashboard shows a green dot in the top-left when packets are received.
 

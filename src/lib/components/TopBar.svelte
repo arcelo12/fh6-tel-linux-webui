@@ -2,11 +2,15 @@
   import { isConnected, displayPacket } from '$lib/stores/telemetry';
   import { carName } from '$lib/car-name';
   import { CAR_CLASS_LABELS, DRIVETRAIN_LABELS } from '$lib/types';
+  import { logout, currentUser } from '$lib/stores/auth';
+  import { appConfig } from '$lib/stores/config';
+  import { goto } from '$app/navigation';
 
-  let { useMph = true, onSettings, onSessions }: {
+  let { useMph = true, onSettings, onSessions, onLobbies }: {
     useMph: boolean;
     onSettings: () => void;
     onSessions: () => void;
+    onLobbies: () => void;
   } = $props();
 
   let pkt = $derived($displayPacket);
@@ -53,9 +57,19 @@
   </div>
 
   <div class="controls">
-    <a href="/pro" class="icon-btn" title="Pro Mode" style="text-decoration: none; font-size: 1.1rem; line-height: 1;">🚀</a>
-    <button class="icon-btn" onclick={onSessions} title="Sessions">⏱</button>
-    <button class="icon-btn" onclick={onSettings} title="Settings">⚙</button>
+    {#if $appConfig?.multiplayer}
+      {#if $currentUser}
+        <span class="username" title="Logged in as {$currentUser.username}">{$currentUser.username}</span>
+        {#if $currentUser.role === 'admin'}
+          <a href="/admin" class="nav-btn" title="Admin Dashboard">Admin</a>
+        {/if}
+        <button class="nav-btn" onclick={async () => { await logout(); goto('/login'); }} title="Sign Out">Sign Out</button>
+      {/if}
+      <a href="/pro" class="nav-btn pro-btn" title="Pro Mode">Pro Dashboard</a>
+      <button class="nav-btn" onclick={onLobbies} title="Multiplayer Lobbies">Lobbies</button>
+    {/if}
+    <button class="nav-btn" onclick={onSessions} title="Sessions">Sessions</button>
+    <button class="nav-btn" onclick={onSettings} title="Settings">Settings</button>
     {#if version}<span class="version">v{version}</span>{/if}
   </div>
 </header>
@@ -66,7 +80,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 0 1rem;
-    height: 2.5rem;
+    height: 2.8rem;
     background: var(--bg-panel);
     border-bottom: 1px solid var(--bd-dim);
     flex-shrink: 0;
@@ -109,12 +123,50 @@
   .class-badge[data-class="B"]  { color: #3b82f6; border-color: #1e3a5f; }
   .class-badge[data-class="C"]  { color: #a855f7; border-color: #4c1d95; }
   .class-badge[data-class="D"]  { color: var(--tx-lo); border-color: var(--bd-subtle); }
-  .controls { display: flex; align-items: center; gap: 0.25rem; }
-  .version { font-size: 0.6rem; color: var(--tx-xdim); letter-spacing: 0.03em; padding: 0 0.1rem; }
-  .icon-btn {
-    background: none; border: none; cursor: pointer;
-    font-size: 1rem; color: var(--tx-dim); padding: 0.25rem 0.5rem;
-    border-radius: 4px;
+  .controls { display: flex; align-items: center; gap: 0.4rem; }
+  .username {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--tx-lo);
+    margin-right: 0.4rem;
+    max-width: 110px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
-  .icon-btn:hover { background: var(--bg-elevated); color: var(--tx-mid); }
+  .version { font-size: 0.6rem; color: var(--tx-xdim); letter-spacing: 0.03em; padding: 0 0.1rem; }
+  
+  .nav-btn {
+    background: transparent;
+    border: 1px solid var(--bd-subtle);
+    cursor: pointer;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--tx-mid);
+    padding: 0.35rem 0.65rem;
+    border-radius: 4px;
+    text-decoration: none;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+  .nav-btn:hover {
+    background: var(--bg-elevated);
+    color: var(--tx-hi);
+    border-color: var(--bd-muted);
+  }
+  .pro-btn {
+    background: var(--ac);
+    color: #fff;
+    border: none;
+    font-weight: 700;
+  }
+  .pro-btn:hover {
+    background: var(--ac);
+    color: #fff;
+    opacity: 0.9;
+    border: none;
+  }
 </style>

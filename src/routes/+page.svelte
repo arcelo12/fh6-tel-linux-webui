@@ -2,6 +2,9 @@
   import { onMount } from 'svelte';
   import { startTelemetryListener, replay } from '$lib/stores/telemetry';
   import { loadSettings, settings } from '$lib/stores/sessions';
+  import { checkAuth, currentUser } from '$lib/stores/auth';
+  import { fetchConfig, appConfig } from '$lib/stores/config';
+  import { goto } from '$app/navigation';
   import TopBar from '$lib/components/TopBar.svelte';
   import CompassBar from '$lib/components/CompassBar.svelte';
   import CenterPanel from '$lib/components/CenterPanel.svelte';
@@ -12,10 +15,14 @@
   import SessionViewer from '$lib/components/SessionViewer.svelte';
   import ReplayBar from '$lib/components/ReplayBar.svelte';
   import SettingsModal from '$lib/components/SettingsModal.svelte';
+  import LobbyModal from '$lib/components/LobbyModal.svelte';
+  import TelemetryConfirmation from '$lib/components/TelemetryConfirmation.svelte';
   import type { SessionRow } from '$lib/types';
 
   let showSessions = $state(false);
   let showSettings = $state(false);
+  let showLobbies = $state(false);
+  let showProNotice = $state(true);
   let viewerSession = $state<SessionRow | null>(null);
   let toasts = $state<{ id: number; message: string }[]>([]);
   let nextToastId = 0;
@@ -29,6 +36,14 @@
   }
 
   onMount(async () => {
+    const config = await fetchConfig();
+    if (config.multiplayer) {
+      const user = await checkAuth();
+      if (!user) {
+        goto('/login');
+        return;
+      }
+    }
     await loadSettings();
     await startTelemetryListener();
   });
@@ -61,10 +76,17 @@
 {/if}
 
 <div class="dashboard">
+  {#if $currentUser && showProNotice}
+    <div class="pro-notice-bar">
+      <span>💡 Sesi perekaman terisolasi untuk masing-masing user. Untuk mulai merekam sesi secara manual, silakan buka <a href="/pro" style="color: var(--ac); font-weight: bold; text-decoration: underline;">Pro Dashboard 🚀</a></span>
+      <button class="pro-dismiss" onclick={() => (showProNotice = false)}>✕</button>
+    </div>
+  {/if}
   <TopBar
     useMph={s?.useMph ?? true}
     onSettings={() => (showSettings = true)}
     onSessions={() => (showSessions = !showSessions)}
+    onLobbies={() => (showLobbies = !showLobbies)}
   />
   <CompassBar />
 
@@ -118,6 +140,12 @@
 {#if showSettings}
   <SettingsModal onClose={() => (showSettings = false)} />
 {/if}
+
+{#if showLobbies}
+  <LobbyModal onClose={() => (showLobbies = false)} />
+{/if}
+
+<TelemetryConfirmation onOpenSettings={() => (showSettings = true)} />
 
 <style>
   /* ── Theme: CSS custom properties ───────────────────────────────────────── */

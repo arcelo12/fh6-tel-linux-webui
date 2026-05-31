@@ -9,9 +9,10 @@ import (
 )
 
 type Target struct {
-	OS   string
-	Arch string
-	Name string
+	OS      string
+	Arch    string
+	Name    string
+	Minimal bool
 }
 
 func main() {
@@ -58,18 +59,27 @@ func main() {
 
 	// 4. Define targets
 	targets := []Target{
-		{OS: "windows", Arch: "amd64", Name: "fh6-telemetry-windows-amd64.exe"},
-		{OS: "linux", Arch: "amd64", Name: "fh6-telemetry-linux-amd64"},
-		{OS: "darwin", Arch: "amd64", Name: "fh6-telemetry-darwin-amd64"},
-		{OS: "darwin", Arch: "arm64", Name: "fh6-telemetry-darwin-arm64"},
+		{OS: "windows", Arch: "amd64", Name: "fh6-telemetry-multi-windows-amd64.exe", Minimal: false},
+		{OS: "linux", Arch: "amd64", Name: "fh6-telemetry-multi-linux-amd64", Minimal: false},
+		{OS: "darwin", Arch: "amd64", Name: "fh6-telemetry-multi-darwin-amd64", Minimal: false},
+		{OS: "darwin", Arch: "arm64", Name: "fh6-telemetry-multi-darwin-arm64", Minimal: false},
+		{OS: "windows", Arch: "amd64", Name: "fh6-telemetry-solo-windows-amd64.exe", Minimal: true},
+		{OS: "linux", Arch: "amd64", Name: "fh6-telemetry-solo-linux-amd64", Minimal: true},
+		{OS: "darwin", Arch: "amd64", Name: "fh6-telemetry-solo-darwin-amd64", Minimal: true},
+		{OS: "darwin", Arch: "arm64", Name: "fh6-telemetry-solo-darwin-arm64", Minimal: true},
 	}
 
 	// 5. Compile for each target
 	for _, target := range targets {
 		outputPath := filepath.Join(distDir, target.Name)
-		fmt.Printf("\n⚙️ Compiling for %s (%s)... ", target.OS, target.Arch)
+		fmt.Printf("\n⚙️ Compiling %s for %s (%s)... ", target.Name, target.OS, target.Arch)
 
-		cmd := exec.Command("go", "build", "-tags", "release", "-ldflags", "-s -w", "-o", filepath.Join("..", outputPath))
+		ldflags := "-s -w -X 'main.IsMinimal=false'"
+		if target.Minimal {
+			ldflags = "-s -w -X 'main.IsMinimal=true'"
+		}
+
+		cmd := exec.Command("go", "build", "-tags", "release", "-ldflags", ldflags, "-o", filepath.Join("..", outputPath))
 		cmd.Dir = "go-server"
 		cmd.Env = append(os.Environ(),
 			"GOOS="+target.OS,

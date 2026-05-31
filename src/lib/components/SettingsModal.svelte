@@ -2,11 +2,70 @@
   import { settings, saveSettings } from '$lib/stores/sessions';
   import MapCalibrator from './MapCalibrator.svelte';
   import type { AppSettings } from '$lib/types';
+  import { currentUser } from '$lib/stores/auth';
+  import { onMount } from 'svelte';
 
   let { onClose }: { onClose: () => void } = $props();
 
   let draft = $state<AppSettings | null>(null);
   let showCalibrator = $state(false);
+
+  let user = $derived($currentUser);
+  let portLoadError = $state<string | null>(null);
+
+  let portInfo = $state<{
+    port: number;
+    portLastChanged: number;
+    canChange: boolean;
+    remainingCooldown: string;
+  } | null>(null);
+
+  let changeError = $state<string | null>(null);
+  let changing = $state(false);
+
+  async function fetchPortInfo() {
+    portLoadError = null;
+    try {
+      const res = await fetch('/api/user/port', { credentials: 'include' });
+      if (res.ok) {
+        portInfo = await res.json();
+      } else {
+        const errData = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        portLoadError = errData.error || `HTTP ${res.status}`;
+        console.error('Gagal mengambil info port:', res.status, errData);
+      }
+    } catch (e) {
+      portLoadError = 'Tidak dapat terhubung ke server';
+      console.error('Error fetchPortInfo:', e);
+    }
+  }
+
+  async function changePort() {
+    if (!confirm('Apakah Anda yakin ingin mengubah port Anda? Anda hanya bisa mengubahnya 1 kali dalam 2 hari.')) {
+      return;
+    }
+    changing = true;
+    changeError = null;
+    try {
+      const res = await fetch('/api/user/port/change', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        portInfo = {
+          port: data.port,
+          portLastChanged: data.portLastChanged,
+          canChange: false,
+          remainingCooldown: '48 jam, 0 menit'
+        };
+        await fetchPortInfo();
+      } else {
+        changeError = data.error || 'Gagal mengubah port';
+      }
+    } catch (e) {
+      changeError = 'Gagal menghubungi server';
+    } finally {
+      changing = false;
+    }
+  }
 
   // The calibrator persists cal fields straight to settings; resync the draft
   // so the modal reflects them when it returns.
@@ -46,6 +105,10 @@
     }
   });
 
+  onMount(() => {
+    fetchPortInfo();
+  });
+
   async function save() {
     if (!draft) return;
     await saveSettings(draft);
@@ -58,11 +121,65 @@
     <div class="modal">
       <h2>Settings</h2>
 
-      <label>
-        UDP Port
-        <input type="number" bind:value={draft.port} min="1024" max="65535" />
-        <span class="hint">Port changes take effect after restarting the app.</span>
-      </label>
+      {#if user}
+        {#if portInfo}
+          <fieldset style="border: 1px solid var(--bd-muted); border-radius: 6px; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
+            <legend style="color: var(--tx-lo); font-size: 0.75rem; padding: 0 0.25rem;">Personal Telemetry Port</legend>
+            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
+                <span style="font-size: 1.1rem; font-weight: bold; color: var(--ac);">
+                  UDP Port: {portInfo.port}
+                </span>
+                <button 
+                  class="cal-btn" 
+                  style="margin: 0; padding: 0.3rem 0.6rem; font-size: 0.75rem;"
+                  disabled={!portInfo.canChange || changing} 
+                  onclick={changePort}
+                >
+                  {changing ? 'Mengubah...' : 'Ubah Port'}
+                </button>
+              </div>
+              
+              {#if !portInfo.canChange}
+                <span class="hint" style="color: #ef4444; font-size: 0.72rem;">
+                  Sisa cooldown: {portInfo.remainingCooldown}
+                </span>
+              {:else}
+                <span class="hint" style="font-size: 0.72rem;">
+                  Anda dapat mengubah port ini ke port acak lain. Batas: 1 kali per 48 jam.
+                </span>
+              {/if}
+
+              {#if changeError}
+                <span style="color: #ef4444; font-size: 0.75rem;">{changeError}</span>
+              {/if}
+
+              <span class="hint" style="margin-top: 0.25rem; font-size: 0.72rem; opacity: 0.85;">
+                Masukkan IP server dan port <strong>{portInfo.port}</strong> pada menu telemetry game Forza Anda.
+              </span>
+            </div>
+          </fieldset>
+        {:else if portLoadError}
+          <fieldset style="border: 1px dashed #ef4444; border-radius: 6px; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem; align-items: center;">
+            <legend style="color: var(--tx-lo); font-size: 0.75rem; padding: 0 0.25rem;">Personal Telemetry Port</legend>
+            <span style="color: #ef4444; font-size: 0.8rem; text-align: center;">Gagal memuat info port: {portLoadError}</span>
+            <button class="cal-btn" style="margin: 0; padding: 0.3rem 0.8rem; font-size: 0.75rem;" onclick={fetchPortInfo}>
+              🔄 Coba Lagi
+            </button>
+          </fieldset>
+        {:else}
+          <fieldset style="border: 1px dashed var(--bd-muted); border-radius: 6px; padding: 0.75rem; text-align: center; color: var(--tx-dim);">
+            <legend style="color: var(--tx-lo); font-size: 0.75rem; padding: 0 0.25rem;">Personal Telemetry Port</legend>
+            <span class="hint">Memuat informasi port telemetri...</span>
+          </fieldset>
+        {/if}
+      {:else}
+        <label>
+          UDP Port
+          <input type="number" bind:value={draft.port} min="1024" max="65535" />
+          <span class="hint">Port changes take effect after restarting the app.</span>
+        </label>
+      {/if}
 
       <label>
         Units

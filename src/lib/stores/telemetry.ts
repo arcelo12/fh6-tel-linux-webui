@@ -46,6 +46,17 @@ export function exitReplay() {
   replay.set({ ...emptyReplay });
 }
 
+export interface PendingTelemetryState {
+  type: 'telemetry_pending';
+  port: number;
+  carOrdinal: number;
+  carClass: number;
+  carPi: number;
+  clientIp: string;
+}
+
+export const pendingTelemetry = writable<PendingTelemetryState | null>(null);
+
 let _frozen: TelemetryPacket | null = null;
 export const displayPacket = derived(
   [packet, replay],
@@ -90,10 +101,19 @@ export async function startTelemetryListener() {
 
     ws.onmessage = (event) => {
       try {
-        const data: TelemetryPacket = JSON.parse(event.data);
-        packet.set(data);
-        lastPacketTime = Date.now();
-        isConnected.set(true);
+        const raw = JSON.parse(event.data);
+        if (raw && raw.type === 'telemetry_live') {
+          packet.set(raw.data);
+          lastPacketTime = Date.now();
+          isConnected.set(true);
+        } else if (raw && raw.type === 'telemetry_pending') {
+          pendingTelemetry.set(raw);
+        } else if (raw && typeof raw === 'object' && 'speedMs' in raw) {
+          // Fallback legacy raw packet format
+          packet.set(raw);
+          lastPacketTime = Date.now();
+          isConnected.set(true);
+        }
       } catch (err) {}
     };
 

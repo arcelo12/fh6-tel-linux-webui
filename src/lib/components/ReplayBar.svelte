@@ -3,38 +3,63 @@
   import { replay, exitReplay } from '$lib/stores/telemetry';
 
   const SPEEDS = [0.5, 1, 2, 4];
-  let timer: ReturnType<typeof setInterval> | null = null;
+  let rafId: number | null = null;
+  let isLooping = false;
 
   function clearTimer() {
-    if (timer) {
-      clearInterval(timer);
-      timer = null;
+    isLooping = false;
+    if (rafId !== null) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
     }
   }
 
   onDestroy(clearTimer);
 
-  // Drives the playback loop. Recording is ~60 Hz, so we advance the index by
-  // `speed` every frame (~60 fps); fractional progress is carried so 0.5x works.
   let carry = 0;
+  let lastTime = 0;
+
   function ensureLoop(playing: boolean, speed: number) {
     clearTimer();
     carry = 0;
+    
     if (!playing) return;
-    timer = setInterval(() => {
+    
+    isLooping = true;
+    lastTime = performance.now();
+
+    function tick(now: number) {
+      if (!isLooping) return;
+      
+      const dt = now - lastTime;
+      lastTime = now;
+      
+      // Calculate how many 60Hz frames have passed
+      const frameDelta = dt / (1000 / 60);
+      
       replay.update((r) => {
         if (!r.active) return r;
-        carry += r.speed;
+        carry += (r.speed * frameDelta);
         const step = Math.floor(carry);
         carry -= step;
-        const next = r.index + step;
-        if (next >= r.packets.length - 1) {
-          clearTimer();
-          return { ...r, index: r.packets.length - 1, playing: false };
+        
+        if (step > 0) {
+            const next = r.index + step;
+            if (next >= r.packets.length - 1) {
+              isLooping = false;
+              return { ...r, index: r.packets.length - 1, playing: false };
+            }
+            return { ...r, index: next };
         }
-        return { ...r, index: next };
+        return r;
       });
-    }, 1000 / 60);
+      
+      if (isLooping) {
+        rafId = requestAnimationFrame(tick);
+      }
+    }
+    
+    rafId = requestAnimationFrame(tick);
   }
 
   $effect(() => {
@@ -105,37 +130,48 @@
 <style>
   .replay-bar {
     position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    left: 20px;
+    right: 20px;
+    bottom: 20px;
     z-index: 110;
     display: flex;
     align-items: center;
-    gap: 1rem;
-    padding: 0.5rem 1rem;
-    background: var(--bg-panel);
-    border-top: 1px solid var(--ac);
-    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.5);
+    gap: 1.5rem;
+    padding: 1rem 1.5rem;
+    background: rgba(15, 20, 35, 0.95);
+    border: 1px solid rgba(236, 72, 153, 0.5);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(236, 72, 153, 0.25), 0 0 0 1px rgba(236, 72, 153, 0.1) inset;
+    backdrop-filter: blur(12px);
   }
   .left {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.8rem;
     min-width: 0;
-    flex: 0 1 240px;
+    flex: 0 1 280px;
   }
   .badge {
-    background: var(--ac);
+    background: linear-gradient(135deg, #a855f7, #ec4899);
     color: #fff;
-    font-size: 0.65rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    padding: 0.15rem 0.4rem;
-    border-radius: 3px;
+    font-size: 0.75rem;
+    font-weight: 900;
+    letter-spacing: 0.1em;
+    padding: 0.25rem 0.6rem;
+    border-radius: 6px;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+    box-shadow: 0 2px 10px rgba(236, 72, 153, 0.4);
+    animation: pulse-border 2s infinite;
+  }
+  @keyframes pulse-border {
+    0% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.4); }
+    70% { box-shadow: 0 0 0 6px rgba(236, 72, 153, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0); }
   }
   .label {
-    color: var(--tx-lo);
-    font-size: 0.78rem;
+    color: #e2e8f0;
+    font-size: 0.85rem;
+    font-weight: 600;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

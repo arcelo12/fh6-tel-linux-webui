@@ -336,6 +336,14 @@
             scrub, play and speed up.
           </p>
           <button class="replay-go" onclick={beginReplay}>▶ Replay on dashboard</button>
+
+          <div class="export-actions">
+            <span class="export-lbl">Download Telemetry Log</span>
+            <div class="export-btns">
+              <a href="/api/export/csv?session_id={session.id}" class="export-btn csv" download>Download CSV</a>
+              <a href="/api/export/json?session_id={session.id}" class="export-btn json" download>Download JSON</a>
+            </div>
+          </div>
         </div>
       {/if}
     </div>
@@ -569,16 +577,81 @@
     max-width: 420px;
   }
   .replay-go {
-    background: var(--ac);
+    background: linear-gradient(135deg, #a855f7, #ec4899);
     color: #fff;
     border: none;
     border-radius: 8px;
-    padding: 0.7rem 1.6rem;
-    font-size: 0.95rem;
-    font-weight: 600;
+    padding: 0.8rem 2.5rem;
+    font-size: 1.1rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
     cursor: pointer;
+    box-shadow: 0 4px 15px rgba(236, 72, 153, 0.4);
+    animation: pulse 2s infinite;
+    transition: all 0.2s ease;
   }
   .replay-go:hover {
-    filter: brightness(1.1);
+    filter: brightness(1.2);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(236, 72, 153, 0.6);
+  }
+  @keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0.4); }
+    70% { box-shadow: 0 0 0 15px rgba(236, 72, 153, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(236, 72, 153, 0); }
+  }
+  .export-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 1.5rem;
+    border-top: 1px solid var(--bd-dim);
+    padding-top: 1.5rem;
+    width: 100%;
+    max-width: 420px;
+  }
+  .export-lbl {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--tx-dim);
+  }
+  .export-btns {
+    display: flex;
+    gap: 0.75rem;
+    width: 100%;
+  }
+  .export-btn {
+    flex: 1;
+    text-align: center;
+    text-decoration: none;
+    font-size: 0.82rem;
+    font-weight: 700;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    border: 1px solid var(--bd-muted);
+    transition: all 0.2s ease;
+  }
+  .export-btn.csv {
+    background: rgba(16, 185, 129, 0.08);
+    color: #34d399;
+    border-color: rgba(16, 185, 129, 0.25);
+  }
+  .export-btn.csv:hover {
+    background: #10b981;
+    color: #ffffff;
+    border-color: #10b981;
+  }
+  .export-btn.json {
+    background: rgba(59, 130, 246, 0.08);
+    color: #60a5fa;
+    border-color: rgba(59, 130, 246, 0.25);
+  }
+  .export-btn.json:hover {
+    background: #3b82f6;
+    color: #ffffff;
+    border-color: #3b82f6;
   }
 </style>

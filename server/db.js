@@ -5,7 +5,7 @@ import os from 'os';
 
 export function dbPath() {
   const localAppdata = process.env.LOCALAPPDATA || path.join(os.homedir(), '.local', 'share');
-  return path.join(localAppdata, 'fh6-tel', 'sessions.db');
+  return path.join(localAppdata, 'fh6-tel', 'sessions_multi.db');
 }
 
 export function open() {
@@ -28,7 +28,8 @@ export function init(db) {
       car_class INTEGER NOT NULL DEFAULT 0,
       car_pi INTEGER NOT NULL DEFAULT 0,
       best_lap REAL,
-      packet_count INTEGER NOT NULL DEFAULT 0
+      packet_count INTEGER NOT NULL DEFAULT 0,
+      user_id INTEGER REFERENCES users(id) ON DELETE CASCADE
     );
     CREATE TABLE IF NOT EXISTS session_packets (
       id INTEGER PRIMARY KEY,
@@ -37,6 +38,61 @@ export function init(db) {
       data BLOB NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_packets_session ON session_packets(session_id);
+
+    -- Multiplayer Tables
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT UNIQUE NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      created_at INTEGER NOT NULL,
+      assigned_port INTEGER UNIQUE,
+      port_last_changed INTEGER DEFAULT 0
+    );
+    CREATE TABLE IF NOT EXISTS lobbies (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      room_code TEXT UNIQUE NOT NULL,
+      host_id INTEGER REFERENCES users(id),
+      created_at INTEGER NOT NULL,
+      status TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS multiplayer_sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      lobby_id INTEGER REFERENCES lobbies(id) ON DELETE CASCADE,
+      name TEXT,
+      started_at INTEGER NOT NULL,
+      ended_at INTEGER,
+      track_id TEXT,
+      best_lap_overall REAL
+    );
+    CREATE TABLE IF NOT EXISTS session_players (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      multi_session_id INTEGER REFERENCES multiplayer_sessions(id) ON DELETE CASCADE,
+      user_id INTEGER REFERENCES users(id),
+      slot_number INTEGER NOT NULL,
+      car_ordinal INTEGER,
+      car_class INTEGER,
+      car_pi INTEGER,
+      best_lap REAL,
+      driver_name TEXT NOT NULL
+    );
+    CREATE TABLE IF NOT EXISTS multiplayer_session_packets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      multi_session_id INTEGER REFERENCES multiplayer_sessions(id) ON DELETE CASCADE,
+      slot_number INTEGER NOT NULL,
+      timestamp_ms INTEGER NOT NULL,
+      data BLOB NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_packets_multi_session ON multiplayer_session_packets(multi_session_id, slot_number);
+    CREATE TABLE IF NOT EXISTS multiplayer_session_laps (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      multi_session_id INTEGER REFERENCES multiplayer_sessions(id) ON DELETE CASCADE,
+      slot_number INTEGER NOT NULL,
+      lap_number INTEGER NOT NULL,
+      lap_time REAL NOT NULL,
+      UNIQUE(multi_session_id, slot_number, lap_number)
+    );
+    CREATE INDEX IF NOT EXISTS idx_laps_multi_session ON multiplayer_session_laps(multi_session_id, slot_number);
   `);
   migrate(db);
 }
