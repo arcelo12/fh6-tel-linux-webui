@@ -40,15 +40,17 @@
     }
   });
 
-  onMount(async () => {
-    await loadSettings();
-    await startTelemetryListener();
-    // Sync recording state from backend
-    const res = await fetch('/api/session/status').catch(() => null);
-    if (res?.ok) {
-      const data = await res.json();
-      isRecording = data.recording;
-    }
+  onMount(() => {
+    (async () => {
+      await loadSettings();
+      await startTelemetryListener();
+      // Sync recording state from backend
+      const res = await fetch('/api/session/status').catch(() => null);
+      if (res?.ok) {
+        const data = await res.json();
+        isRecording = data.recording;
+      }
+    })();
 
     const handleFsChange = () => {
       isFullscreen = !!document.fullscreenElement;
