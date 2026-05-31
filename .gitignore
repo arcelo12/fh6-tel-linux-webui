@@ -6,6 +6,7 @@ node_modules
 .env
 .env.*
 !.env.example
+fh6_config.json
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .claude/

@@ -24,6 +24,7 @@ var (
 )
 
 func main() {
+	loadConfig()
 	hub := newHub()
 	
 	// Settings Default (Fallback/Global)

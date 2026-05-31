@@ -9,8 +9,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -99,6 +101,64 @@ func createSessionToken() (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
+type RateLimiter struct {
+	mu          sync.Mutex
+	loginIPs    map[string][]time.Time
+	registerIPs map[string][]time.Time
+}
+
+var authRateLimiter = &RateLimiter{
+	loginIPs:    make(map[string][]time.Time),
+	registerIPs: make(map[string][]time.Time),
+}
+
+func getIP(r *http.Request) string {
+	ip, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		return r.RemoteAddr
+	}
+	return ip
+}
+
+// allowRequest checks if an IP has exceeded the limit within the time window.
+// Uses globalConfig.Auth.MaxLoginAttempts and MaxRegisterAttempts.
+func (rl *RateLimiter) allowRequest(ip string, isLogin bool) bool {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+
+	now := time.Now()
+	var window time.Duration
+	var limit int
+	var record map[string][]time.Time
+
+	if isLogin {
+		window = 15 * time.Minute // 15 mins for login
+		limit = globalConfig.Auth.MaxLoginAttempts
+		record = rl.loginIPs
+	} else {
+		window = 1 * time.Hour // 1 hour for register
+		limit = globalConfig.Auth.MaxRegisterAttempts
+		record = rl.registerIPs
+	}
+
+	times := record[ip]
+	var validTimes []time.Time
+	for _, t := range times {
+		if now.Sub(t) <= window {
+			validTimes = append(validTimes, t)
+		}
+	}
+
+	if len(validTimes) >= limit {
+		record[ip] = validTimes // Cleanup old ones while keeping the valid ones
+		return false
+	}
+
+	validTimes = append(validTimes, now)
+	record[ip] = validTimes
+	return true
+}
+
 // Register Handler
 func handleRegister(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -112,6 +172,13 @@ func handleRegister(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request payload"})
+		return
+	}
+
+	ip := getIP(r)
+	if !authRateLimiter.allowRequest(ip, false) {
+		w.WriteHeader(http.StatusTooManyRequests)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Terlalu banyak percobaan pendaftaran. Silakan coba lagi nanti."})
 		return
 	}
 
@@ -186,6 +253,13 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid request payload"})
+		return
+	}
+
+	ip := getIP(r)
+	if !authRateLimiter.allowRequest(ip, true) {
+		w.WriteHeader(http.StatusTooManyRequests)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Terlalu banyak percobaan login gagal. Tunggu 15 menit."})
 		return
 	}
 
