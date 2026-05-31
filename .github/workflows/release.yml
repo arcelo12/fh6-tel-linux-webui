@@ -75,9 +75,13 @@ jobs:
           draft: false
           prerelease: false
           files: |
-            dist/fh6-telemetry-windows-amd64.exe
-            dist/fh6-telemetry-linux-amd64
-            dist/fh6-telemetry-darwin-amd64
-            dist/fh6-telemetry-darwin-arm64
+            dist/fh6-telemetry-multi-windows-amd64.exe
+            dist/fh6-telemetry-multi-linux-amd64
+            dist/fh6-telemetry-multi-darwin-amd64
+            dist/fh6-telemetry-multi-darwin-arm64
+            dist/fh6-telemetry-solo-windows-amd64.exe
+            dist/fh6-telemetry-solo-linux-amd64
+            dist/fh6-telemetry-solo-darwin-amd64
+            dist/fh6-telemetry-solo-darwin-arm64
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

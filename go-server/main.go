@@ -18,6 +18,7 @@ import (
 )
 
 var (
+	IsMinimal      = "false" // Can be overridden at build time using -ldflags="-X main.IsMinimal=true"
 	db             *sql.DB
 	sessionManager *SessionManager
 )
@@ -178,10 +179,14 @@ func main() {
 			fmt.Printf("Connected to SQLite (WAL mode): %s\n", dbPath)
 			// Clean up expired auth sessions
 			_, _ = db.Exec("DELETE FROM auth_sessions WHERE expires_at < ?", time.Now().UnixMilli())
-			// Initialize Multiplayer Lobby System
-			initLobbySubsystem(db)
-			// Initialize User Telemetry System
-			initUserTelemetry(db, hub)
+			
+			if IsMinimal != "true" {
+				// Initialize Multiplayer Lobby System
+				initLobbySubsystem(db)
+				// Initialize User Telemetry System
+				initUserTelemetry(db, hub)
+			}
+			
 			// Initialize Solo Database Worker
 			go StartSoloDBWorker(db)
 		}
@@ -189,38 +194,49 @@ func main() {
 
 	// 1. HTTP Server & API Routes
 	http.HandleFunc("/ws", hub.handleWS)
-	http.HandleFunc("/api/auth/register", handleRegister)
-	http.HandleFunc("/api/auth/login", handleLogin)
-	http.HandleFunc("/api/auth/logout", handleLogout)
-	http.HandleFunc("/api/auth/me", handleMe)
 
-	// User Telemetry Port APIs
-	http.HandleFunc("/api/user/port", handleUserPortStatus)
-	http.HandleFunc("/api/user/port/change", handleUserPortChange)
-	http.HandleFunc("/api/user/port/confirm", handleUserPortConfirm(hub))
-	http.HandleFunc("/api/user/port/reject", handleUserPortReject(hub))
+	// Expose Config for Frontend
+	http.HandleFunc("/api/config", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]bool{
+			"multiplayer": IsMinimal != "true",
+		})
+	})
 
-	// Lobby Rooms API
-	http.HandleFunc("/api/lobby/create", handleCreateLobby(hub))
-	http.HandleFunc("/api/lobby/join", handleJoinLobby(hub))
-	http.HandleFunc("/api/lobby/leave", handleLeaveLobby(hub))
-	http.HandleFunc("/api/lobby/status", handleLobbyStatus)
-	http.HandleFunc("/api/lobby/start-record", handleStartRecord(hub))
-	http.HandleFunc("/api/lobby/stop-record", handleStopRecord(hub))
-	http.HandleFunc("/api/lobby/list", handleListLobbies)
-	http.HandleFunc("/api/lobby/request-join", handleRequestJoin(hub))
-	http.HandleFunc("/api/lobby/respond-join", handleRespondJoin(hub))
+	if IsMinimal != "true" {
+		http.HandleFunc("/api/auth/register", handleRegister)
+		http.HandleFunc("/api/auth/login", handleLogin)
+		http.HandleFunc("/api/auth/logout", handleLogout)
+		http.HandleFunc("/api/auth/me", handleMe)
+
+		// User Telemetry Port APIs
+		http.HandleFunc("/api/user/port", handleUserPortStatus)
+		http.HandleFunc("/api/user/port/change", handleUserPortChange)
+		http.HandleFunc("/api/user/port/confirm", handleUserPortConfirm(hub))
+		http.HandleFunc("/api/user/port/reject", handleUserPortReject(hub))
+
+		// Lobby Rooms API
+		http.HandleFunc("/api/lobby/create", handleCreateLobby(hub))
+		http.HandleFunc("/api/lobby/join", handleJoinLobby(hub))
+		http.HandleFunc("/api/lobby/leave", handleLeaveLobby(hub))
+		http.HandleFunc("/api/lobby/status", handleLobbyStatus)
+		http.HandleFunc("/api/lobby/start-record", handleStartRecord(hub))
+		http.HandleFunc("/api/lobby/stop-record", handleStopRecord(hub))
+		http.HandleFunc("/api/lobby/list", handleListLobbies)
+		http.HandleFunc("/api/lobby/request-join", handleRequestJoin(hub))
+		http.HandleFunc("/api/lobby/respond-join", handleRespondJoin(hub))
+
+		// Admin APIs
+		http.HandleFunc("/api/admin/stats", handleAdminStats)
+		http.HandleFunc("/api/admin/users", handleAdminUsers)
+		http.HandleFunc("/api/admin/users/role", handleAdminUpdateRole)
+		http.HandleFunc("/api/admin/rooms", handleAdminRooms)
+		http.HandleFunc("/api/admin/rooms/delete", handleAdminDeleteRoom(hub))
+	}
 
 	// Export APIs
 	http.HandleFunc("/api/export/csv", handleExportCSV)
 	http.HandleFunc("/api/export/json", handleExportJSON)
-	
-	// Admin APIs
-	http.HandleFunc("/api/admin/stats", handleAdminStats)
-	http.HandleFunc("/api/admin/users", handleAdminUsers)
-	http.HandleFunc("/api/admin/users/role", handleAdminUpdateRole)
-	http.HandleFunc("/api/admin/rooms", handleAdminRooms)
-	http.HandleFunc("/api/admin/rooms/delete", handleAdminDeleteRoom(hub))
 	
 	http.HandleFunc("/api/sessions", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")

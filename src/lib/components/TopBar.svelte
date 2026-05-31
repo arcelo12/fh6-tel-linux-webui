@@ -3,6 +3,7 @@
   import { carName } from '$lib/car-name';
   import { CAR_CLASS_LABELS, DRIVETRAIN_LABELS } from '$lib/types';
   import { logout, currentUser } from '$lib/stores/auth';
+  import { appConfig } from '$lib/stores/config';
   import { goto } from '$app/navigation';
 
   let { useMph = true, onSettings, onSessions, onLobbies }: {
@@ -56,15 +57,17 @@
   </div>
 
   <div class="controls">
-    {#if $currentUser}
-      <span class="username" title="Logged in as {$currentUser.username}">{$currentUser.username}</span>
-      {#if $currentUser.role === 'admin'}
-        <a href="/admin" class="nav-btn" title="Admin Dashboard">Admin</a>
+    {#if $appConfig?.multiplayer}
+      {#if $currentUser}
+        <span class="username" title="Logged in as {$currentUser.username}">{$currentUser.username}</span>
+        {#if $currentUser.role === 'admin'}
+          <a href="/admin" class="nav-btn" title="Admin Dashboard">Admin</a>
+        {/if}
+        <button class="nav-btn" onclick={async () => { await logout(); goto('/login'); }} title="Sign Out">Sign Out</button>
       {/if}
-      <button class="nav-btn" onclick={async () => { await logout(); goto('/login'); }} title="Sign Out">Sign Out</button>
+      <a href="/pro" class="nav-btn pro-btn" title="Pro Mode">Pro Dashboard</a>
+      <button class="nav-btn" onclick={onLobbies} title="Multiplayer Lobbies">Lobbies</button>
     {/if}
-    <a href="/pro" class="nav-btn pro-btn" title="Pro Mode">Pro Dashboard</a>
-    <button class="nav-btn" onclick={onLobbies} title="Multiplayer Lobbies">Lobbies</button>
     <button class="nav-btn" onclick={onSessions} title="Sessions">Sessions</button>
     <button class="nav-btn" onclick={onSettings} title="Settings">Settings</button>
     {#if version}<span class="version">v{version}</span>{/if}

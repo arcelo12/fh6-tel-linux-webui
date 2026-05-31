@@ -3,6 +3,7 @@
   import { startTelemetryListener, replay } from '$lib/stores/telemetry';
   import { loadSettings, settings } from '$lib/stores/sessions';
   import { checkAuth, currentUser } from '$lib/stores/auth';
+  import { fetchConfig, appConfig } from '$lib/stores/config';
   import { goto } from '$app/navigation';
   import TopBar from '$lib/components/TopBar.svelte';
   import CompassBar from '$lib/components/CompassBar.svelte';
@@ -35,10 +36,13 @@
   }
 
   onMount(async () => {
-    const user = await checkAuth();
-    if (!user) {
-      goto('/login');
-      return;
+    const config = await fetchConfig();
+    if (config.multiplayer) {
+      const user = await checkAuth();
+      if (!user) {
+        goto('/login');
+        return;
+      }
     }
     await loadSettings();
     await startTelemetryListener();
