@@ -306,10 +306,15 @@ func handleStartRecord(hub *Hub) http.HandlerFunc {
 		var req struct {
 			RoomCode    string `json:"roomCode"`
 			SessionName string `json:"sessionName"`
+			SessionType string `json:"sessionType"`
 		}
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			return
+		}
+
+		if req.SessionType == "" {
+			req.SessionType = "race"
 		}
 
 		roomsMu.RLock()
@@ -337,16 +342,16 @@ func handleStartRecord(hub *Hub) http.HandlerFunc {
 		// Insert multiplayer session into database
 		nowMs := time.Now().UnixMilli()
 		res, err := db.Exec(
-			"INSERT INTO multiplayer_sessions (lobby_id, name, started_at, status) VALUES ((SELECT id FROM lobbies WHERE room_code = ?), ?, ?, 'recording')",
-			room.Code, req.SessionName, nowMs,
+			"INSERT INTO multiplayer_sessions (lobby_id, name, session_type, started_at, status) VALUES ((SELECT id FROM lobbies WHERE room_code = ?), ?, ?, ?, 'recording')",
+			room.Code, req.SessionName, req.SessionType, nowMs,
 		)
 		var sessionID int64
 		if err != nil {
 			// Fallback: create mock lobby entry if not exist in DB yet
 			db.Exec("INSERT OR IGNORE INTO lobbies (room_code, created_at, status) VALUES (?, ?, 'active')", room.Code, nowMs)
 			res, err = db.Exec(
-				"INSERT INTO multiplayer_sessions (lobby_id, name, started_at, status) VALUES ((SELECT id FROM lobbies WHERE room_code = ?), ?, ?, 'recording')",
-				room.Code, req.SessionName, nowMs,
+				"INSERT INTO multiplayer_sessions (lobby_id, name, session_type, started_at, status) VALUES ((SELECT id FROM lobbies WHERE room_code = ?), ?, ?, ?, 'recording')",
+				room.Code, req.SessionName, req.SessionType, nowMs,
 			)
 		}
 		if err == nil {
@@ -711,4 +716,68 @@ func handleRespondJoin(hub *Hub) http.HandlerFunc {
 			"slotNumber": assignedSlot,
 		})
 	}
+}
+
+// REST API: Get Multiplayer History
+func handleLobbyHistory(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	session, ok := checkSession(r)
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	// Get all multiplayer session slots for any session where the user participated
+	rows, err := db.Query(`
+		SELECT m.id, l.room_code, m.name, m.session_type, m.started_at, m.ended_at, sp.slot_number, sp.car_ordinal, sp.driver_name,
+			(SELECT COUNT(*) FROM multiplayer_session_packets WHERE multi_session_id = m.id AND slot_number = sp.slot_number) as packet_count
+		FROM multiplayer_sessions m
+		JOIN lobbies l ON m.lobby_id = l.id
+		JOIN session_players sp ON m.id = sp.multi_session_id
+		WHERE m.id IN (SELECT multi_session_id FROM session_players WHERE user_id = ?)
+		ORDER BY m.started_at DESC, sp.slot_number ASC
+	`, session.UserID)
+
+	if err != nil {
+		log.Printf("Error fetching lobby history: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var history []map[string]interface{}
+	for rows.Next() {
+		var id int64
+		var roomCode, name, sessionType, driverName string
+		var startedAt int64
+		var endedAt sql.NullInt64
+		var slotNumber, carOrdinal, packetCount int
+		
+		err := rows.Scan(&id, &roomCode, &name, &sessionType, &startedAt, &endedAt, &slotNumber, &carOrdinal, &driverName, &packetCount)
+		if err == nil {
+			history = append(history, map[string]interface{}{
+				"id": id,
+				"roomCode": roomCode,
+				"name": name,
+				"sessionType": sessionType,
+				"startedAt": startedAt,
+				"endedAt": endedAt.Int64,
+				"slotNumber": slotNumber,
+				"carOrdinal": carOrdinal,
+				"driverName": driverName,
+				"packetCount": packetCount,
+			})
+		}
+	}
+
+	if history == nil {
+		history = make([]map[string]interface{}, 0)
+	}
+
+	json.NewEncoder(w).Encode(history)
 }

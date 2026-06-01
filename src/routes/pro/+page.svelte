@@ -311,8 +311,8 @@
   }
 
   .pro-root {
-    width: 1280px;
-    height: 720px;
+    width: 100%;
+    height: 100%;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -320,7 +320,6 @@
     color: #e2e2e8;
     font-family: 'Inter', sans-serif;
     user-select: none;
-    transform-origin: center center;
     flex-shrink: 0;
   }
 </style>
@@ -328,56 +327,56 @@
 <svelte:window bind:innerWidth bind:innerHeight />
 
 <div class="pro-shell">
-<div class="pro-root" style="transform: scale({Math.min(innerWidth / 1280, innerHeight / 720)})">
+<div class="pro-root">
     <div class="hud-scanline absolute inset-0 z-[100] opacity-5 pointer-events-none"></div>
     <!-- Top Navigation Bar -->
     <header
-        class="z-50 flex justify-between items-center px-8 py-3 bg-surface-container border-b border-outline-variant">
-        <div class="flex items-center gap-4">
-            <a href="/" data-sveltekit-reload class="hover:opacity-80 transition-opacity font-display-hero text-xl tracking-tighter text-on-surface font-bold">TELEMETRY<span class="text-primary font-light">PRO</span></a>
-            <div class="h-6 w-[1px] bg-outline-variant mx-2"></div>
-            <span class="text-sm font-medium opacity-80">{carLabel}</span>
-            <div class="flex gap-2 ml-4">
-                <span class="bg-primary/20 text-primary border border-primary/30 text-[10px] px-2 py-0.5 rounded font-bold uppercase">{classLabel} {piLabel}</span>
-                <span class="bg-white/5 border border-white/10 text-[10px] px-2 py-0.5 rounded font-bold">{driveLabel}</span>
+        class="z-50 flex flex-wrap justify-between items-center px-4 md:px-8 py-3 bg-surface-container border-b border-outline-variant gap-4">
+        <div class="flex items-center gap-2 md:gap-4 flex-wrap">
+            <a href="/" data-sveltekit-reload class="hover:opacity-80 transition-opacity font-display-hero text-lg md:text-xl tracking-tighter text-on-surface font-bold">TELEMETRY<span class="text-primary font-light">PRO</span></a>
+            <div class="hidden md:block h-6 w-[1px] bg-outline-variant mx-2"></div>
+            <span class="text-xs md:text-sm font-medium opacity-80">{carLabel}</span>
+            <div class="flex gap-2 md:ml-4">
+                <span class="bg-primary/20 text-primary border border-primary/30 text-[9px] md:text-[10px] px-2 py-0.5 rounded font-bold uppercase">{classLabel} {piLabel}</span>
+                <span class="bg-white/5 border border-white/10 text-[9px] md:text-[10px] px-2 py-0.5 rounded font-bold">{driveLabel}</span>
             </div>
         </div>
-        <div class="flex items-center gap-6">
+        <div class="flex items-center gap-4 md:gap-6 flex-wrap">
             <button
                 onclick={toggleRecording}
-                class="flex items-center gap-2 px-4 py-1.5 rounded font-bold text-xs transition-all uppercase tracking-wider {isRecording ? 'bg-white/10 text-error border border-error/50 animate-pulse' : 'bg-error text-black hover:opacity-90'}">
-                <span class="material-symbols-outlined text-sm">{isRecording ? 'stop' : 'fiber_manual_record'}</span>
+                class="flex items-center gap-2 px-3 py-1.5 rounded font-bold text-[10px] md:text-xs transition-all uppercase tracking-wider {isRecording ? 'bg-white/10 text-error border border-error/50 animate-pulse' : 'bg-error text-black hover:opacity-90'}">
+                <span class="material-symbols-outlined text-[14px] md:text-sm">{isRecording ? 'stop' : 'fiber_manual_record'}</span>
                 {#if isRecording}
                   STOP · {formatDuration(recordingDuration)}
                 {:else}
                   Start Session
                 {/if}
             </button>
-            <div class="flex items-center gap-6 border-l border-outline-variant pl-6">
+            <div class="flex items-center gap-3 md:gap-6 border-l border-outline-variant pl-3 md:pl-6">
                 <button class="flex items-center gap-1.5 text-on-surface-variant hover:text-primary transition-colors" onclick={() => (showSessions = !showSessions)} title="Sessions">
-                    <span class="material-symbols-outlined text-[20px]">history</span>
-                    <span class="text-[10px] font-bold uppercase tracking-widest mt-0.5">History</span>
+                    <span class="material-symbols-outlined text-[18px] md:text-[20px]">history</span>
+                    <span class="hidden md:inline text-[10px] font-bold uppercase tracking-widest mt-0.5">History</span>
                 </button>
                 <button class="flex items-center gap-1.5 text-on-surface-variant hover:text-primary transition-colors" onclick={() => (showSettings = true)} title="Settings">
-                    <span class="material-symbols-outlined text-[20px]">settings</span>
-                    <span class="text-[10px] font-bold uppercase tracking-widest mt-0.5">Settings</span>
+                    <span class="material-symbols-outlined text-[18px] md:text-[20px]">settings</span>
+                    <span class="hidden md:inline text-[10px] font-bold uppercase tracking-widest mt-0.5">Settings</span>
                 </button>
                 <button class="flex items-center gap-1.5 text-on-surface-variant hover:text-primary transition-colors" onclick={toggleFullscreen} title="Fullscreen">
-                    <span class="material-symbols-outlined text-[20px]">{isFullscreen ? 'fullscreen_exit' : 'fullscreen'}</span>
-                    <span class="text-[10px] font-bold uppercase tracking-widest mt-0.5">Fullscreen</span>
+                    <span class="material-symbols-outlined text-[18px] md:text-[20px]">{isFullscreen ? 'fullscreen_exit' : 'fullscreen'}</span>
+                    <span class="hidden md:inline text-[10px] font-bold uppercase tracking-widest mt-0.5">Fullscreen</span>
                 </button>
-                <div class="flex items-center gap-2">
-                    <div class="w-2 h-2 rounded-full {$isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}"></div>
-                    <span class="text-[10px] font-label-mono text-white/50">{$isConnected ? 'LIVE LINK' : 'DISCONNECTED'}</span>
+                <div class="flex items-center gap-1.5 md:gap-2">
+                    <div class="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full {$isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'}"></div>
+                    <span class="text-[8px] md:text-[10px] font-label-mono text-white/50">{$isConnected ? 'LIVE LINK' : 'DISCONNECTED'}</span>
                 </div>
             </div>
         </div>
     </header>
-    <main class="flex-1 min-h-0 grid grid-cols-12 gap-3 p-3 overflow-hidden">
+    <main class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-3 p-3 overflow-y-auto lg:overflow-hidden">
         <!-- Left Column: Session & Vehicle Stats -->
-        <div class="col-span-3 flex flex-col gap-3 min-h-0">
+        <div class="col-span-1 lg:col-span-3 flex flex-col gap-3 min-h-0 order-2 lg:order-1">
             <!-- Engine & Power Panel with Sparklines -->
-            <div class="pro-panel rounded-lg p-3 flex-1 flex flex-col min-h-0">
+            <div class="pro-panel rounded-lg p-3 flex-1 flex flex-col min-h-0 min-h-[400px] lg:min-h-0">
                 <div class="flex justify-between items-center mb-2">
                     <h3 class="text-label font-label-mono text-primary uppercase tracking-widest">Engine &amp; Power</h3>
                     <span class="text-label text-white/40">{pkt ? 'LAP ' + (pkt.lapNumber + 1) : 'LAP --'}</span>
@@ -505,7 +504,7 @@
             </div>
         </div>
         <!-- Center Column: Gauges -->
-        <div class="col-span-6 flex flex-col gap-3 min-h-0">
+        <div class="col-span-1 lg:col-span-6 flex flex-col gap-3 min-h-0 order-1 lg:order-2 min-h-[500px] lg:min-h-0">
             <div class="pro-panel rounded-lg flex-1 relative flex flex-col items-center justify-center overflow-hidden">
                 <!-- Gauge Style Selector -->
                 <div class="absolute top-3 right-3 flex gap-1 z-20">
@@ -734,7 +733,7 @@
             </div>
         </div>
         <!-- Right Column: Suspension & Tires -->
-        <div class="col-span-3 flex flex-col gap-3 min-h-0">
+        <div class="col-span-1 lg:col-span-3 flex flex-col gap-3 min-h-0 order-3 lg:order-3">
             <!-- Tire Grid -->
             <div class="pro-panel rounded-lg p-4 grid grid-cols-2 gap-4 flex-none h-auto">
                 <!-- FL -->
@@ -844,29 +843,30 @@
     </main>
     <!-- Footer: Lap History & Timing -->
     <footer
-        class="bg-surface-container-highest border-t border-outline-variant px-8 py-4 flex items-center justify-between">
-        <div class="flex gap-12">
-            <div class="flex flex-col">
+        class="bg-surface-container-highest border-t border-outline-variant px-4 md:px-8 py-4 flex flex-wrap items-center justify-between gap-4">
+        <div class="flex flex-wrap gap-6 md:gap-12 w-full md:w-auto">
+            <div class="flex flex-col flex-1 md:flex-none">
                 <span class="text-[9px] font-label-mono text-white/40 uppercase mb-1">Current Lap</span>
-                <span class="text-2xl font-bold font-label-mono">{padClock(pkt?.currentRaceTime)}</span>
+                <span class="text-xl md:text-2xl font-bold font-label-mono">{padClock(pkt?.currentRaceTime)}</span>
             </div>
-            <div class="flex flex-col">
+            <div class="flex flex-col flex-1 md:flex-none">
                 <span class="text-[9px] font-label-mono text-white/40 uppercase mb-1">Last Lap</span>
-                <span class="text-2xl font-bold font-label-mono text-white/80">{padClock(pkt?.lastLap)}</span>
+                <span class="text-xl md:text-2xl font-bold font-label-mono text-white/80">{padClock(pkt?.lastLap)}</span>
             </div>
-            <div class="flex flex-col">
+            <div class="flex flex-col flex-1 md:flex-none">
                 <span class="text-[9px] font-label-mono text-white/40 uppercase mb-1">Session Best</span>
-                <span class="text-2xl font-bold font-label-mono text-secondary">{padClock(pkt?.bestLap)}</span>
+                <span class="text-xl md:text-2xl font-bold font-label-mono text-secondary">{padClock(pkt?.bestLap)}</span>
             </div>
         </div>
-        <div class="flex items-center gap-8 pr-4">
-            <div class="text-right">
+        <div class="flex items-center justify-between md:justify-end gap-4 md:gap-8 w-full md:w-auto md:pr-4">
+            <div class="text-left md:text-right">
                 <span class="text-[9px] font-label-mono text-white/40 uppercase block">Total Distance</span>
                 <span class="text-sm font-bold">{pkt ? (pkt.distanceTraveled / 1609.34).toFixed(1) : "0.0"} <span class="text-[10px] opacity-50">MI</span></span>
             </div>
-            <button class="flex items-center gap-2 px-6 py-2 bg-white/5 border border-outline hover:bg-white/10 transition-all rounded-lg text-xs font-bold uppercase tracking-wider" onclick={() => (showSessions = true)}>
+            <button class="flex items-center gap-2 px-4 md:px-6 py-2 bg-white/5 border border-outline hover:bg-white/10 transition-all rounded-lg text-xs font-bold uppercase tracking-wider" onclick={() => (showSessions = true)}>
                 <span class="material-symbols-outlined text-sm">history</span>
-                Session History
+                <span class="hidden md:inline">Session History</span>
+                <span class="inline md:hidden">History</span>
             </button>
         </div>
     </footer>

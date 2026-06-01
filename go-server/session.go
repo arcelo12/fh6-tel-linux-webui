@@ -17,6 +17,7 @@ const rewindGuardTicks = 60
 type SessionManager struct {
 	mu                  sync.Mutex
 	AutoRecord          bool
+	IsManual            bool
 	ActiveId            *int64
 	bestLap             float64
 	lastRaceTime        float64
@@ -43,6 +44,7 @@ func (s *SessionManager) Lock()   { s.mu.Lock() }
 func (s *SessionManager) Unlock() { s.mu.Unlock() }
 
 func (s *SessionManager) BeginNewSession() {
+	s.IsManual = false
 	s.bestLap = math.Inf(1)
 	s.prevCurrentLap = 0.0
 	s.curLapPeak = 0.0
@@ -127,7 +129,7 @@ func (s *SessionManager) OnRaceOnChange(wasRacing bool, isRacing bool, carOrdina
 	if !wasRacing && isRacing && s.AutoRecord {
 		return "Open", carOrdinal, carClass, carPi
 	}
-	if wasRacing && !isRacing && s.ActiveId != nil {
+	if wasRacing && !isRacing && s.ActiveId != nil && !s.IsManual {
 		return "Close", 0, 0, 0
 	}
 	return "None", 0, 0, 0

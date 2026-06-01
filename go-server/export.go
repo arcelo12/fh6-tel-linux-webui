@@ -1,14 +1,17 @@
 package main
 
 import (
+	"compress/gzip"
 	"database/sql"
 	"encoding/csv"
 	"encoding/json"
 	"fh6-telemetry/parser"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 // Export CSV Handler
@@ -72,7 +75,15 @@ func handleExportCSV(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
 	w.Header().Set("Content-Type", "text/csv")
 
-	writer := csv.NewWriter(w)
+	var out io.Writer = w
+	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		w.Header().Set("Content-Encoding", "gzip")
+		gz := gzip.NewWriter(w)
+		defer gz.Close()
+		out = gz
+	}
+
+	writer := csv.NewWriter(out)
 	defer writer.Flush()
 
 	// Write CSV Header
@@ -191,20 +202,30 @@ func handleExportJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", filename))
 	w.Header().Set("Content-Type", "application/json")
 
-	var packets []*parser.TelemetryPacket
+	var out io.Writer = w
+	if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+		w.Header().Set("Content-Encoding", "gzip")
+		gz := gzip.NewWriter(w)
+		defer gz.Close()
+		out = gz
+	}
+
+	out.Write([]byte("["))
+	first := true
+	encoder := json.NewEncoder(out)
+	
 	for rows.Next() {
 		var data []byte
 		if err := rows.Scan(&data); err == nil {
 			if pkt, err := parser.Parse(data); err == nil {
-				packets = append(packets, pkt)
+				if !first {
+					out.Write([]byte(","))
+				}
+				first = false
+				encoder.Encode(pkt)
 			}
 		}
 	}
 
-	if packets == nil {
-		w.Write([]byte("[]"))
-		return
-	}
-
-	json.NewEncoder(w).Encode(packets)
+	out.Write([]byte("]"))
 }

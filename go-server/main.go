@@ -121,6 +121,7 @@ func main() {
 		_, _ = db.Exec("ALTER TABLE users ADD COLUMN port_last_changed INTEGER DEFAULT 0")
 		_, _ = db.Exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'")
 		_, _ = db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_assigned_port ON users(assigned_port) WHERE assigned_port IS NOT NULL")
+		_, _ = db.Exec("ALTER TABLE multiplayer_sessions ADD COLUMN session_type TEXT DEFAULT 'race'")
 
 		_, err = db.Exec(`
 			CREATE TABLE IF NOT EXISTS lobbies (
@@ -142,6 +143,7 @@ func main() {
 				name TEXT,
 				started_at INTEGER NOT NULL,
 				ended_at INTEGER,
+				session_type TEXT DEFAULT 'race',
 				track_id TEXT,
 				best_lap_overall REAL
 			);
@@ -224,6 +226,7 @@ func main() {
 		http.HandleFunc("/api/lobby/start-record", handleStartRecord(hub))
 		http.HandleFunc("/api/lobby/stop-record", handleStopRecord(hub))
 		http.HandleFunc("/api/lobby/list", handleListLobbies)
+		http.HandleFunc("/api/lobby/history", handleLobbyHistory)
 		http.HandleFunc("/api/lobby/request-join", handleRequestJoin(hub))
 		http.HandleFunc("/api/lobby/respond-join", handleRespondJoin(hub))
 
@@ -448,6 +451,7 @@ func main() {
 			return
 		}
 		sm.BeginNewSession()
+		sm.IsManual = true
 		sm.ActiveId = &id
 		sm.Unlock()
 

@@ -16,14 +16,16 @@
     session: SessionRow;
     useMph: boolean;
     onClose: () => void;
+    preloadedPackets?: TelemetryPacket[];
+    preloadedLaps?: SessionLap[];
   } = $props();
 
   type Tab = 'analysis' | 'map' | 'replay';
   let tab = $state<Tab>('analysis');
 
-  let packets = $state<TelemetryPacket[]>([]);
-  let laps = $state<SessionLap[]>([]);
-  let loading = $state(true);
+  let packets = $state.raw<TelemetryPacket[]>(preloadedPackets || []);
+  let laps = $state.raw<SessionLap[]>(preloadedLaps || []);
+  let loading = $state(!preloadedPackets);
 
   let bestLapNumber = $derived(
     laps.length
@@ -46,6 +48,8 @@
   let plots: uPlot[] = [];
 
   $effect(() => {
+    if (preloadedPackets) return; // Skip fetching if provided via props
+    
     loadSessionPackets(session.id).then((p) => {
       packets = p;
       loading = false;

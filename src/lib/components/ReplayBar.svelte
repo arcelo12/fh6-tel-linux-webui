@@ -62,8 +62,17 @@
     rafId = requestAnimationFrame(tick);
   }
 
+  let currentPlaying = false;
+  let currentSpeed = 1;
+
   $effect(() => {
-    ensureLoop($replay.playing, $replay.speed);
+    const p = $replay.playing;
+    const s = $replay.speed;
+    if (p !== currentPlaying || s !== currentSpeed) {
+      currentPlaying = p;
+      currentSpeed = s;
+      ensureLoop(p, s);
+    }
   });
 
   function togglePlay() {
@@ -130,19 +139,17 @@
 <style>
   .replay-bar {
     position: fixed;
-    left: 20px;
-    right: 20px;
-    bottom: 20px;
+    left: 0;
+    right: 0;
+    bottom: 0;
     z-index: 110;
     display: flex;
     align-items: center;
     gap: 1.5rem;
     padding: 1rem 1.5rem;
-    background: rgba(15, 20, 35, 0.95);
-    border: 1px solid rgba(236, 72, 153, 0.5);
-    border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(236, 72, 153, 0.25), 0 0 0 1px rgba(236, 72, 153, 0.1) inset;
-    backdrop-filter: blur(12px);
+    background: #0f1423;
+    border-top: 2px solid #ec4899;
+    box-shadow: 0 -8px 32px rgba(236, 72, 153, 0.2);
   }
   .left {
     display: flex;
@@ -183,13 +190,13 @@
     gap: 0.6rem;
   }
   .play {
-    background: var(--ac);
-    color: #fff;
-    border: none;
+    background: #10b981; /* High contrast vibrant green */
+    color: #000;
+    border: 2px solid #059669;
     border-radius: 50%;
-    width: 2rem;
-    height: 2rem;
-    font-size: 0.85rem;
+    width: 2.8rem;
+    height: 2.8rem;
+    font-size: 1.2rem;
     cursor: pointer;
     flex-shrink: 0;
     display: flex;
@@ -197,6 +204,11 @@
     justify-content: center;
     line-height: 1;
     padding: 0;
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
+    transition: transform 0.1s;
+  }
+  .play:active {
+    transform: scale(0.95);
   }
   .time {
     color: var(--tx-dim);

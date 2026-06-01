@@ -3,9 +3,23 @@
   import { sessions, loadSessions, deleteSession, clearAllSessions, setSessionBookmark } from '$lib/stores/sessions';
   import { carName } from '$lib/car-name';
   import type { SessionRow } from '$lib/types';
+  import { goto } from '$app/navigation';
 
   let { onClose, onOpen }: { onClose: () => void; onOpen: (s: SessionRow) => void } =
     $props();
+
+  let activeTab = $state<'solo' | 'multi'>('solo');
+  let multiHistory = $state<any[]>([]);
+  let multiLoading = $state(false);
+
+  async function loadMultiHistory() {
+    multiLoading = true;
+    try {
+      const res = await fetch('/api/lobby/history');
+      if (res.ok) multiHistory = await res.json();
+    } catch (e) {}
+    multiLoading = false;
+  }
 
   function formatTime(seconds: number) {
     if (!seconds || seconds <= 0) return '—';
@@ -42,6 +56,7 @@
 
   onMount(() => {
     loadSessions();
+    loadMultiHistory();
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('session_sort_pref');
       if (saved === 'date_desc' || saved === 'date_asc' || saved === 'lap_asc' || saved === 'length_desc') {
@@ -98,36 +113,78 @@
     </div>
   </div>
 
+  <div class="tabs-header">
+    <button class="tab-btn" class:active={activeTab === 'solo'} onclick={() => activeTab = 'solo'}>Solo Sessions</button>
+    <button class="tab-btn" class:active={activeTab === 'multi'} onclick={() => activeTab = 'multi'}>Multiplayer</button>
+  </div>
+
   <div class="drawer-body">
     <div class="session-list">
-      {#each sortedSessions as session}
-        <div
-          class="session-row"
-          role="button"
-          tabindex="0"
-          onclick={() => onOpen(session)}
-          onkeydown={(e) => e.key === 'Enter' && onOpen(session)}
-        >
-          <button
-            class="star"
-            class:on={session.bookmarked}
-            title={session.bookmarked ? 'Remove bookmark' : 'Bookmark'}
-            onclick={(e) => toggleBookmark(session, e)}
+      {#if activeTab === 'solo'}
+        {#each sortedSessions as session}
+          <div
+            class="session-row"
+            role="button"
+            tabindex="0"
+            onclick={() => onOpen(session)}
+            onkeydown={(e) => e.key === 'Enter' && onOpen(session)}
           >
-            {session.bookmarked ? '★' : '☆'}
-          </button>
-          <div class="session-info">
-            <span class="session-name">
-              {session.name ?? carName(session.carOrdinal)}
-            </span>
-            <span class="session-date">{formatDate(session.startedAt)} • {session.packetCount} pkts</span>
-            <span class="session-best">Best: {formatTime(session.bestLap ?? 0)}</span>
+            <button
+              class="star"
+              class:on={session.bookmarked}
+              title={session.bookmarked ? 'Remove bookmark' : 'Bookmark'}
+              onclick={(e) => toggleBookmark(session, e)}
+            >
+              {session.bookmarked ? '★' : '☆'}
+            </button>
+            <div class="session-info">
+              <span class="session-name">
+                {session.name ?? carName(session.carOrdinal)}
+              </span>
+              <span class="session-date">{formatDate(session.startedAt)} • {session.packetCount} pkts</span>
+              <span class="session-best">Best: {formatTime(session.bestLap ?? 0)}</span>
+            </div>
+            <button class="delete-btn" onclick={(e) => handleDelete(session, e)}>🗑</button>
           </div>
-          <button class="delete-btn" onclick={(e) => handleDelete(session, e)}>🗑</button>
-        </div>
+        {:else}
+          <p class="empty">No solo sessions recorded yet.</p>
+        {/each}
       {:else}
-        <p class="empty">No sessions recorded yet.</p>
-      {/each}
+        {#if multiLoading}
+           <p class="empty">Loading multiplayer history...</p>
+        {:else}
+          {#each multiHistory as session}
+            <div
+              class="session-row"
+              role="button"
+              tabindex="0"
+              onclick={() => {
+                onClose();
+                goto(`/replay/multi/${session.id}/${session.slotNumber}`);
+              }}
+              onkeydown={(e) => {
+                if (e.key === 'Enter') {
+                  onClose();
+                  goto(`/replay/multi/${session.id}/${session.slotNumber}`);
+                }
+              }}
+            >
+              <div class="session-info">
+                <span class="session-name">
+                  {session.name ? session.name : `Room ${session.roomCode}`}
+                  <span class="multi-type-badge">{session.sessionType === 'convoy' ? '🚗 Convoy' : '🏁 Race'}</span>
+                </span>
+                <span class="session-date">{formatDate(session.startedAt)} • {session.packetCount} pkts</span>
+                <span class="session-best" style="color: #60a5fa;">
+                  👤 {session.driverName} (Slot {session.slotNumber}) — {carName(session.carOrdinal)}
+                </span>
+              </div>
+            </div>
+          {:else}
+            <p class="empty">No multiplayer history found.</p>
+          {/each}
+        {/if}
+      {/if}
     </div>
   </div>
 </div>
@@ -142,6 +199,20 @@
   .drawer-header {
     display: flex; justify-content: space-between; align-items: center;
     padding: 1rem; border-bottom: 1px solid var(--bd-dim);
+  }
+  .tabs-header {
+    display: flex; border-bottom: 1px solid var(--bd-dim);
+    background: var(--bg-elevated);
+  }
+  .tab-btn {
+    flex: 1; padding: 0.75rem; background: none; border: none; color: var(--tx-dim);
+    font-size: 0.85rem; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent;
+  }
+  .tab-btn:hover { color: var(--tx-mid); }
+  .tab-btn.active { color: var(--ac); border-bottom-color: var(--ac); background: var(--bg-body); }
+  .multi-type-badge {
+    font-size: 0.65rem; background: rgba(236,72,153,0.15); color: #ec4899;
+    padding: 0.15rem 0.4rem; border-radius: 4px; margin-left: 0.4rem; font-weight: 700;
   }
   h3 { margin: 0; color: var(--tx-hi); }
   .header-actions { display: flex; align-items: center; gap: 0.6rem; }

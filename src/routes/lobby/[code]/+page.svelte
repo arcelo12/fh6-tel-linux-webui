@@ -9,6 +9,7 @@
 
   let lobby = $state<any>(null);
   let sessionName = $state('');
+  let sessionType = $state('race');
   let ws = $state<WebSocket | null>(null);
   let loading = $state(false);
   let errorMsg = $state('');
@@ -132,10 +133,10 @@
       const res = await fetch('/api/lobby/start-record', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ roomCode: code, sessionName })
+        body: JSON.stringify({ roomCode: code, sessionName, sessionType })
       });
-      if (!res.ok) throw new Error(await res.text());
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to start recording');
       if (data.success) {
         lobby.isRecording = true;
         lobby.activeSessionId = data.sessionID;
@@ -277,7 +278,14 @@
                   placeholder="e.g. Suzuka GP - Race 1"
                 />
               </div>
-              <button class="record-btn start" onclick={startRecording}>Start Session Recording</button>
+              <div class="record-input-group mt-3">
+                <label for="session-type">Session Type</label>
+                <select id="session-type" bind:value={sessionType} class="w-full bg-black/40 border border-outline-variant rounded p-2 text-on-surface text-sm focus:border-primary outline-none transition-colors">
+                  <option value="race">Race (Competitive)</option>
+                  <option value="convoy">Convoy (Casual / Cruising)</option>
+                </select>
+              </div>
+              <button class="record-btn start mt-4" onclick={startRecording}>Start Session Recording</button>
             {/if}
           {:else}
             <!-- Player/Spectator recording state only -->
