@@ -12,6 +12,8 @@
     session,
     useMph = true,
     onClose,
+    preloadedPackets,
+    preloadedLaps,
   }: {
     session: SessionRow;
     useMph: boolean;

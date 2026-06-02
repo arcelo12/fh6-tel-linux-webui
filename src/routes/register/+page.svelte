@@ -1,15 +1,17 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
-  import { register, checkAuth } from '$lib/stores/auth';
+  import { register, checkAuth, verifyAccount } from '$lib/stores/auth';
 
   let username = $state('');
   let email = $state('');
   let password = $state('');
   let confirmPassword = $state('');
+  let verificationToken = $state('');
   let errorMsg = $state('');
   let successMsg = $state('');
   let loading = $state(false);
+  let showVerification = $state(false);
 
   onMount(async () => {
     // If already authenticated, skip registration
@@ -43,13 +45,41 @@
     loading = true;
 
     try {
-      await register(username, email, password);
-      successMsg = 'Registration successful! Redirecting to sign in...';
+      const res = await register(username, email, password);
+      if (res.needsVerification) {
+          showVerification = true;
+          successMsg = 'Registration successful! Please check your email for the verification code.';
+      } else {
+          successMsg = 'Registration successful! Redirecting to sign in...';
+          setTimeout(() => {
+            goto('/login');
+          }, 2000);
+      }
+    } catch (err: any) {
+      errorMsg = err.message || 'Registration failed';
+      loading = false;
+    }
+  }
+
+  async function handleVerify(e: SubmitEvent) {
+    e.preventDefault();
+    if (!verificationToken) {
+      errorMsg = 'Please enter the verification code';
+      return;
+    }
+
+    errorMsg = '';
+    successMsg = '';
+    loading = true;
+
+    try {
+      await verifyAccount(email, verificationToken);
+      successMsg = 'Account verified! Redirecting to sign in...';
       setTimeout(() => {
         goto('/login');
       }, 2000);
     } catch (err: any) {
-      errorMsg = err.message || 'Registration failed';
+      errorMsg = err.message || 'Verification failed';
       loading = false;
     }
   }
@@ -71,6 +101,45 @@
     <h2>Driver Registration</h2>
     <p class="subtitle">Create an account to join lobbies and track telemetry</p>
 
+    {#if showVerification}
+    <form onsubmit={handleVerify}>
+      {#if errorMsg}
+        <div class="banner error-banner">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="banner-icon">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-5a.75.75 0 01.75.75v4.5a.75.75 0 01-1.5 0v-4.5A.75.75 0 0110 5zm0 10a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
+          </svg>
+          <span>{errorMsg}</span>
+        </div>
+      {/if}
+
+      {#if successMsg}
+        <div class="banner success-banner">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="banner-icon">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clip-rule="evenodd" />
+          </svg>
+          <span>{successMsg}</span>
+        </div>
+      {/if}
+      <div class="input-group">
+        <label for="verificationToken">Verification Code</label>
+        <input
+          type="text"
+          id="verificationToken"
+          bind:value={verificationToken}
+          placeholder="6-digit code"
+          required
+          disabled={loading || successMsg.includes('Redirecting')}
+        />
+      </div>
+      <button type="submit" class="submit-btn" disabled={loading || successMsg.includes('Redirecting')}>
+        {#if loading}
+          <div class="spinner"></div>
+        {:else}
+          Verify Account
+        {/if}
+      </button>
+    </form>
+    {:else}
     <form onsubmit={handleSubmit}>
       {#if errorMsg}
         <div class="banner error-banner">
@@ -146,6 +215,7 @@
         {/if}
       </button>
     </form>
+    {/if}
 
     <div class="footer-links">
       Already registered? <a href="/login">Sign In</a>

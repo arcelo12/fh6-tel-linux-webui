@@ -1,0 +1,94 @@
+/* =============================================
+   Pro Dashboard – Shared Global CSS
+   Used by pro/+page.svelte AND all widget components
+   ============================================= */
+
+/* ---------- CSS Variables ---------- */
+:root {
+  --bg-body:    #030712;
+  --bg-panel:   #060c14;
+  --bg-card:    #080e18;
+  --bg-elevated:#0d1420;
+  --bg-track:   #151e2e;
+  --bd-dim:     #131d2e;
+  --bd-subtle:  #1e2a3a;
+  --bd-muted:   #252f42;
+  --bd-strong:  #2a3a50;
+  --tx-hi:      #f9fafb;
+  --tx-mid:     #e5e7eb;
+  --tx-lo:      #9ca3af;
+  --tx-dim:     #6b7280;
+  --tx-xdim:    #4b5563;
+  --tx-ghost:   #374151;
+  --ac:         #3b82f6;
+  --ac-dim:     #1e3a5f;
+}
+[data-theme="cobalt2"] {
+  --bg-body:    #122738;
+  --bg-panel:   #163448;
+  --bg-card:    #193549;
+  --bg-elevated:#1e4060;
+  --bg-track:   #1a3b58;
+  --bd-dim:     #1f4e6a;
+  --bd-subtle:  #235a7a;
+  --bd-muted:   #2a6d91;
+  --bd-strong:  #337ba0;
+  --tx-hi:      #ffffff;
+  --tx-mid:     #e1efff;
+  --tx-lo:      #9acfdf;
+  --tx-dim:     #7eb8d4;
+  --tx-xdim:    #5a96b8;
+  --tx-ghost:   #3d7a9c;
+  --ac:         #ffc600;
+  --ac-dim:     #7a5e00;
+}
+
+/* ---------- Tailwind color overrides ---------- */
+.bg-background { background-color: #0c0e12 !important; }
+.text-on-surface { color: #e2e2e8 !important; }
+.text-on-surface-variant { color: #b9cacb !important; }
+.bg-surface-container { background-color: #111318 !important; }
+.bg-surface-container-highest { background-color: #333539 !important; }
+.border-outline-variant { border-color: #282a2e !important; }
+.border-outline { border-color: #3b494b !important; }
+.text-primary { color: #00dbe9 !important; }
+.bg-primary { background-color: #00dbe9 !important; }
+.text-secondary { color: #e9b3ff !important; }
+.text-error { color: #ffb4ab !important; }
+.bg-error { background-color: #ffb4ab !important; }
+
+/* ---------- Typography ---------- */
+.font-display-hero { font-family: 'Space Grotesk', sans-serif !important; }
+.font-label-mono { font-family: 'JetBrains Mono', monospace !important; }
+.font-body-md { font-family: 'Inter', sans-serif !important; }
+.text-label { font-size: 11px; }
+
+/* ---------- Pro Panel Widget Shell ---------- */
+.pro-panel {
+  background: rgba(17, 19, 24, 0.8);
+  border: 1px solid #3b494b;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* ---------- SVG / Chart Utilities ---------- */
+.glow-cyan { filter: drop-shadow(0 0 8px rgba(0, 219, 233, 0.5)); }
+.speed-arc-bg {
+  stroke: rgba(255, 255, 255, 0.05);
+  stroke-dasharray: 280;
+  stroke-dashoffset: 0;
+  stroke-linecap: round;
+}
+.speed-arc-active {
+  stroke: #00dbe9;
+  stroke-dasharray: 280;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.1s linear;
+}
+.hud-scanline {
+  background: linear-gradient(rgba(18,16,16,0) 50%, rgba(0,0,0,0.15) 50%);
+  background-size: 100% 2px;
+  pointer-events: none;
+}
+.mini-graph-path { fill: none; stroke: #00dbe9; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.mini-graph-bg { fill: rgba(0, 219, 233, 0.05); }
+.data-table-row { border-bottom: 1px solid rgba(255, 255, 255, 0.05); }

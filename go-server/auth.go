@@ -22,6 +22,11 @@ type UserRegisterRequest struct {
 	Password string `json:"password"`
 }
 
+type UserVerifyRequest struct {
+	Email string `json:"email"`
+	Token string `json:"token"`
+}
+
 type UserLoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
@@ -113,6 +118,13 @@ var authRateLimiter = &RateLimiter{
 }
 
 func getIP(r *http.Request) string {
+	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+		ips := strings.Split(xff, ",")
+		return strings.TrimSpace(ips[0])
+	}
+	if xrip := r.Header.Get("X-Real-IP"); xrip != "" {
+		return strings.TrimSpace(xrip)
+	}
 	ip, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		return r.RemoteAddr
@@ -218,11 +230,21 @@ func handleRegister(w http.ResponseWriter, r *http.Request) {
 		role = "admin"
 	}
 
+	// Generate Verification Token
+	b := make([]byte, 3)
+	rand.Read(b)
+	verificationToken := hex.EncodeToString(b)
+	// For admin, they could be auto-verified, but let's stick to standard flow unless we want admin auto-verification
+	isVerified := 0
+	if role == "admin" {
+		isVerified = 1
+	}
+
 	// Insert into DB
 	createdAt := time.Now().UnixMilli()
 	_, err = db.Exec(
-		"INSERT INTO users (username, email, password_hash, created_at, role) VALUES (?, ?, ?, ?, ?)",
-		username, email, hashedPassword, createdAt, role,
+		"INSERT INTO users (username, email, password_hash, created_at, role, is_verified, verification_token) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		username, email, hashedPassword, createdAt, role, isVerified, verificationToken,
 	)
 	if err != nil {
 		if strings.Contains(err.Error(), "UNIQUE constraint failed") {
@@ -236,8 +258,45 @@ func handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if isVerified == 0 {
+		// Send Email
+		go sendVerificationEmail(email, username, verificationToken)
+	}
+
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"message": "Registration successful"})
+	json.NewEncoder(w).Encode(map[string]string{"message": "Registration successful", "needs_verification": fmt.Sprintf("%t", isVerified == 0)})
+}
+
+// Verify Handler
+func handleVerify(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req UserVerifyRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	res, err := db.Exec("UPDATE users SET is_verified = 1, verification_token = NULL WHERE email = ? AND verification_token = ?", req.Email, req.Token)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
+		return
+	}
+
+	affected, _ := res.RowsAffected()
+	if affected == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Invalid verification code or email"})
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Account verified successfully"})
 }
 
 // Login Handler
@@ -268,10 +327,11 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 
 	var userID int64
 	var username, storedHash string
+	var isVerified int
 	err := db.QueryRow(
-		"SELECT id, username, password_hash FROM users WHERE email = ?",
+		"SELECT id, username, password_hash, is_verified FROM users WHERE email = ?",
 		email,
-	).Scan(&userID, &username, &storedHash)
+	).Scan(&userID, &username, &storedHash, &isVerified)
 
 	// Validate credentials
 	if err == sql.ErrNoRows || !verifyPassword(password, storedHash) {
@@ -283,6 +343,12 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Login database error: %v", err)
 		w.WriteHeader(http.StatusInternalServerError)
 		json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
+		return
+	}
+
+	if isVerified == 0 {
+		w.WriteHeader(http.StatusForbidden)
+		json.NewEncoder(w).Encode(map[string]string{"error": "Account not verified", "needs_verification": "true"})
 		return
 	}
 
@@ -308,8 +374,7 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Provision Cookie: HttpOnly, Secure, SameSite=Lax
-	// TODO(security): Enforce secure cookie over HTTPS in production.
-	secureFlag := r.TLS != nil
+	secureFlag := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
 	cookie := &http.Cookie{
 		Name:     "session_id",
 		Value:    token,
@@ -337,7 +402,7 @@ func handleLogout(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Expire the cookie
-	secureFlag := r.TLS != nil
+	secureFlag := r.TLS != nil || r.Header.Get("X-Forwarded-Proto") == "https"
 	expiredCookie := &http.Cookie{
 		Name:     "session_id",
 		Value:    "",
@@ -415,4 +480,59 @@ func handleMe(w http.ResponseWriter, r *http.Request) {
 		"username": session.Username,
 		"role":     session.Role,
 	})
+}
+
+// Get Dashboard Layout Handler
+func handleGetLayout(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.Method != http.MethodGet {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	session, ok := checkSession(r)
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	var layout sql.NullString
+	err := db.QueryRow("SELECT dashboard_layout FROM users WHERE id = ?", session.UserID).Scan(&layout)
+	if err != nil || !layout.Valid {
+		json.NewEncoder(w).Encode(map[string]interface{}{"layout": nil})
+		return
+	}
+	
+	// Pass the raw JSON string back (parsed as JSON so it doesn't double-escape)
+	w.Write([]byte(fmt.Sprintf(`{"layout": %s}`, layout.String)))
+}
+
+// Save Dashboard Layout Handler
+func handleSaveLayout(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
+	session, ok := checkSession(r)
+	if !ok {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	var req struct {
+		Layout interface{} `json:"layout"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	layoutBytes, _ := json.Marshal(req.Layout)
+	_, err := db.Exec("UPDATE users SET dashboard_layout = ? WHERE id = ?", string(layoutBytes), session.UserID)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]bool{"success": true})
 }

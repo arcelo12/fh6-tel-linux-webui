@@ -67,8 +67,13 @@ export async function login(email: string, password: string): Promise<UserSessio
   return user;
 }
 
-export async function register(username: string, email: string, password: string): Promise<void> {
-  await apiRequest<void>('/auth/register', 'POST', { username, email, password });
+export async function register(username: string, email: string, password: string): Promise<{ needsVerification: boolean }> {
+  const res = await apiRequest<{ needs_verification?: string }>('/auth/register', 'POST', { username, email, password });
+  return { needsVerification: res.needs_verification === 'true' };
+}
+
+export async function verifyAccount(email: string, token: string): Promise<void> {
+  await apiRequest<void>('/auth/verify', 'POST', { email, token });
 }
 
 export async function logout(): Promise<void> {

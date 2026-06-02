@@ -122,6 +122,9 @@ func main() {
 		_, _ = db.Exec("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'user'")
 		_, _ = db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_assigned_port ON users(assigned_port) WHERE assigned_port IS NOT NULL")
 		_, _ = db.Exec("ALTER TABLE multiplayer_sessions ADD COLUMN session_type TEXT DEFAULT 'race'")
+		_, _ = db.Exec("ALTER TABLE users ADD COLUMN dashboard_layout TEXT")
+		_, _ = db.Exec("ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 0")
+		_, _ = db.Exec("ALTER TABLE users ADD COLUMN verification_token TEXT")
 
 		_, err = db.Exec(`
 			CREATE TABLE IF NOT EXISTS lobbies (
@@ -208,6 +211,7 @@ func main() {
 
 	if IsMinimal != "true" {
 		http.HandleFunc("/api/auth/register", handleRegister)
+		http.HandleFunc("/api/auth/verify", handleVerify)
 		http.HandleFunc("/api/auth/login", handleLogin)
 		http.HandleFunc("/api/auth/logout", handleLogout)
 		http.HandleFunc("/api/auth/me", handleMe)
@@ -217,6 +221,13 @@ func main() {
 		http.HandleFunc("/api/user/port/change", handleUserPortChange)
 		http.HandleFunc("/api/user/port/confirm", handleUserPortConfirm(hub))
 		http.HandleFunc("/api/user/port/reject", handleUserPortReject(hub))
+		http.HandleFunc("/api/user/layout", func(w http.ResponseWriter, r *http.Request) {
+			if r.Method == http.MethodGet {
+				handleGetLayout(w, r)
+			} else {
+				handleSaveLayout(w, r)
+			}
+		})
 
 		// Lobby Rooms API
 		http.HandleFunc("/api/lobby/create", handleCreateLobby(hub))

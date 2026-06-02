@@ -4,13 +4,26 @@ import type { SessionRow, TelemetryPacket, AppSettings, SessionLap } from '$lib/
 export const sessions = writable<SessionRow[]>([]);
 export const settings = writable<AppSettings | null>(null);
 
+function getBackendUrl(): string {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('backend_node_url');
+    if (saved && saved.trim()) {
+      return saved.trim().replace(/\/$/, '');
+    }
+  }
+  return '';
+}
+
 async function apiRequest<T>(path: string, method: string = 'GET', body?: any): Promise<T> {
   const opts: RequestInit = { method, headers: {} };
   if (body) {
     opts.headers = { 'Content-Type': 'application/json' };
     opts.body = JSON.stringify(body);
   }
-  const res = await fetch(`/api${path}`, opts);
+  opts.credentials = 'include';
+  const base = getBackendUrl();
+  const url = base ? `${base}/api${path}` : `/api${path}`;
+  const res = await fetch(url, opts);
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }

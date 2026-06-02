@@ -92,8 +92,21 @@ let ws: WebSocket | null = null;
 
 export async function startTelemetryListener() {
   if (!ws || ws.readyState === WebSocket.CLOSED) {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    ws = new WebSocket(`${protocol}//${window.location.host}/ws`);
+    let wsUrl = '';
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('backend_node_url');
+      if (saved && saved.trim()) {
+        const clean = saved.trim().replace(/\/$/, '');
+        wsUrl = clean.replace(/^http:/, 'ws:').replace(/^https:/, 'wss:') + '/ws';
+      }
+    }
+
+    if (!wsUrl) {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      wsUrl = `${protocol}//${window.location.host}/ws`;
+    }
+
+    ws = new WebSocket(wsUrl);
     
     ws.onopen = () => {
       isConnected.set(true);

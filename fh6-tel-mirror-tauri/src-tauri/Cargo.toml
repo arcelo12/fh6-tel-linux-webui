@@ -1,0 +1,20 @@
+[package]
+name = "fh6-tel-mirror-tauri"
+version = "1.0.0"
+description = "FH6 Telemetry Mirror Hub"
+authors = ["Antigravity AI"]
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "1.5", features = [] }
+
+[dependencies]
+tauri = { version = "1.5", features = ["api-all"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1", features = ["full"] }
+
+[features]
+# this feature is used for production builds where assets are bundled into the executable
+default = [ "custom-protocol" ]
+custom-protocol = [ "tauri/custom-protocol" ]

@@ -1,28 +1,9 @@
+# ==========================================
+# FH6 Telemetry - .gitignore
+# ==========================================
+
+# ─── OS & Editor ──────────────────────────
 .DS_Store
-node_modules
-/build
-/.svelte-kit
-/package
-.env
-.env.*
-!.env.example
-fh6_config.json
-vite.config.js.timestamp-*
-vite.config.ts.timestamp-*
-.claude/
-scripts/*
-!scripts/download-map-tiles.mjs
-!scripts/build_release.go
-
-
-# Compiled binaries
-/dist/
-
-# Temporary directories for embedding
-/go-server/embed_build/
-/go-server/embed_ui/
-
-# IDEs and editors
 .vscode/
 .idea/
 *.suo
@@ -30,14 +11,28 @@ scripts/*
 *.njsproj
 *.sln
 *.sw?
+Thumbs.db
 
-# Local databases and logs
-*.db
-*.sqlite
-*.sqlite3
-*.log
+# ─── Environment & Secrets ────────────────
+.env
+.env.*
+!.env.example
 
-# Local Go binaries
+# ─── Node.js ──────────────────────────────
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ─── SvelteKit / Vite build ───────────────
+/build
+/.svelte-kit
+/package
+/dist/
+vite.config.js.timestamp-*
+vite.config.ts.timestamp-*
+
+# ─── Go binaries & artifacts ──────────────
 *.exe
 *.exe~
 *.dll
@@ -45,3 +40,45 @@ scripts/*
 *.dylib
 /go-server/go-server
 /go-server/fh6-telemetry
+/go-server/embed_build/
+/go-server/embed_ui/
+
+# ─── fh6-tel-mirror (Go CLI/TUI) ──────────
+# Compiled local binary (not the dist/ release folder)
+/fh6-tel-mirror/fh6-tel-mirror
+/fh6-tel-mirror/fh6-tel-mirror.exe
+/fh6-tel-mirror/dist/
+/fh6-tel-mirror/mirror.log
+
+# ─── fh6-tel-mirror-tauri (Rust/Tauri) ────
+# Rust build artifacts (large — up to several GB)
+/fh6-tel-mirror-tauri/src-tauri/target/
+
+# Tauri bundled output
+/fh6-tel-mirror-tauri/src-tauri/gen/
+
+# Frontend build output
+/fh6-tel-mirror-tauri/dist/
+
+# Node modules (already covered above, explicit for clarity)
+/fh6-tel-mirror-tauri/node_modules/
+
+# Tauri app-specific logs
+/fh6-tel-mirror-tauri/src-tauri/*.log
+
+# ─── Local config & databases ─────────────
+fh6_config.json
+mirror_config.json
+*.db
+*.sqlite
+*.sqlite3
+*.log
+
+# ─── Scripts (internal only) ──────────────
+scripts/*
+!scripts/download-map-tiles.mjs
+!scripts/build_release.go
+
+# ─── Misc ─────────────────────────────────
+.claude/
+fh6-tel-mirror-gui

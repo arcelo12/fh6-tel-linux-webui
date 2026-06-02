@@ -38,6 +38,11 @@
       (($packet?.lapNumber ?? 0) > 0)
   );
 
+  let mapKey = $state(0);
+  function forceReload() {
+    mapKey++;
+  }
+
   async function toggle() {
     if (!$settings) return;
     await saveSettings({ ...$settings, mapEnabled: !$settings.mapEnabled });
@@ -47,32 +52,46 @@
 <div class="map-widget">
   <div class="map-header">
     <span class="map-label">{$replay.active ? 'REPLAY MAP' : 'TRACK MAP'}</span>
-    <button
-      class="toggle"
-      class:on={$settings?.mapEnabled}
-      onclick={toggle}
-      title={$settings?.mapEnabled ? 'Hide map' : 'Show map'}
-    >
-      {$settings?.mapEnabled ? 'ON' : 'OFF'}
-    </button>
+    <div class="flex items-center gap-1.5">
+      {#if $settings?.mapEnabled}
+        <button
+          class="reload-btn"
+          onclick={forceReload}
+          title="Reload/Recalculate map scale"
+        >
+          <span class="material-symbols-outlined text-[13px] md:text-[14px]">refresh</span>
+        </button>
+      {/if}
+      <button
+        class="toggle"
+        class:on={$settings?.mapEnabled}
+        onclick={toggle}
+        title={$settings?.mapEnabled ? 'Hide map' : 'Show map'}
+      >
+        {$settings?.mapEnabled ? 'ON' : 'OFF'}
+      </button>
+    </div>
   </div>
 
   {#if $settings?.mapEnabled && $settings}
-    <MapPanel
-      points={pts}
-      currentIndex={idx}
-      drawLine={inEvent}
-      colorByLap={$replay.active}
-      fixedTrace={$replay.active}
-      settings={$settings}
-      compact
-    />
+    {#key mapKey}
+      <MapPanel
+        points={pts}
+        currentIndex={idx}
+        drawLine={inEvent}
+        colorByLap={$replay.active}
+        fixedTrace={$replay.active}
+        settings={$settings}
+        compact
+      />
+    {/key}
   {/if}
 </div>
 
 <style>
   .map-widget {
-    height: 220px;
+    height: 100%;
+    min-height: 0;
     border-top: 1px solid var(--bd-subtle);
     padding: 0.4rem;
     display: flex;
@@ -81,6 +100,7 @@
     /* Contain Leaflet's internal pane z-indexes so the map can't paint over
        the session drawer / modals. */
     isolation: isolate;
+    overflow: hidden;
   }
   .map-header {
     display: flex;
@@ -92,6 +112,22 @@
     font-size: 0.6rem;
     font-weight: 700;
     letter-spacing: 0.06em;
+  }
+  .reload-btn {
+    background: var(--bg-elevated);
+    border: 1px solid var(--bd-muted);
+    color: var(--tx-dim);
+    padding: 0.1rem 0.25rem;
+    border-radius: 3px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s ease;
+  }
+  .reload-btn:hover {
+    border-color: var(--ac);
+    color: var(--tx-hi);
   }
   .toggle {
     background: var(--bg-elevated);

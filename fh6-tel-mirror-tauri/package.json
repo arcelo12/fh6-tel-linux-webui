@@ -1,0 +1,29 @@
+{
+  "name": "fh6-tel-mirror-tauri",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "tauri:build:windows": "tauri build --target x86_64-pc-windows-msvc",
+    "tauri:build:linux": "tauri build --target x86_64-unknown-linux-gnu",
+    "tauri:build:macos-arm": "tauri build --target aarch64-apple-darwin",
+    "tauri:build:macos-intel": "tauri build --target x86_64-apple-darwin"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^1.5.0",
+    "svelte": "^5.0.0"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^5.0.0",
+    "@tauri-apps/cli": "^1.5.0",
+    "typescript": "~5.6.2",
+    "vite": "^6.0.3"
+  }
+}
+
