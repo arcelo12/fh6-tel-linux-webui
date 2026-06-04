@@ -63,7 +63,29 @@ jobs:
           CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="$LDFLAGS" -o "dist/fh6-tel-mirror-darwin-amd64" .
           CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="$LDFLAGS" -o "dist/fh6-tel-mirror-darwin-arm64" .
           
-          cp mirror_config.json dist/mirror_config.json
+          cat << 'EOF' > dist/mirror_config.json
+          {
+            "bindPort": 20440,
+            "destinations": [
+              {
+                "id": "simhub",
+                "name": "SimHub/Vibration Rig",
+                "host": "127.0.0.1",
+                "port": 20500,
+                "rateLimit": "60Hz",
+                "enabled": false
+              },
+              {
+                "id": "local-hub",
+                "name": "Local FH6 Telemetry Server",
+                "host": "127.0.0.1",
+                "port": 20450,
+                "rateLimit": "60Hz",
+                "enabled": true
+              }
+            ]
+          }
+          EOF
 
       # ─── Create Unified GitHub Release ────────────────────────────────────
       - name: Create GitHub Release & Upload Go Binaries
