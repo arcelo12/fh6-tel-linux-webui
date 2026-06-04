@@ -25,14 +25,14 @@ Ditulis dalam **Go murni** — menghasilkan binary statik tunggal tanpa dependen
 
 **Opsi 1: Git Tag (otomatis)**
 ```bash
-git tag mirror-cli-v1.0.0
-git push origin mirror-cli-v1.0.0
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
 **Opsi 2: Manual di GitHub UI**
 1. Buka repository di GitHub
 2. Klik tab **Actions**
-3. Pilih **`FH6 Telemetry Mirror (CLI/TUI) - Release`**
+3. Pilih **`Release Suite (WebUI, CLI, GUI)`**
 4. Klik **Run workflow** → isi nomor versi → **Run workflow**
 
 ### Hasil di GitHub Release

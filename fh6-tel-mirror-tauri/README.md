@@ -36,15 +36,15 @@ Karena Tauri memerlukan WebView2 SDK dan tools installer (NSIS/WiX) yang **hanya
 
 **Opsi 1: Tag Git (otomatis release)**
 ```bash
-git tag mirror-v1.0.0
-git push origin mirror-v1.0.0
+git tag v1.0.0
+git push origin v1.0.0
 ```
 → GitHub Actions akan otomatis build untuk semua platform dan membuat **GitHub Release** dengan semua installer.
 
 **Opsi 2: Manual via GitHub UI**
 1. Buka repository di GitHub
 2. Klik tab **Actions**
-3. Pilih workflow `FH6 Telemetry Mirror Hub - Release`
+3. Pilih workflow `Release Suite (WebUI, CLI, GUI)`
 4. Klik **Run workflow** dan isi versi
 
 ### Hasil Build (GitHub Release):

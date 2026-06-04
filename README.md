@@ -2,7 +2,7 @@
 
 [![Latest Release](https://img.shields.io/github/v/release/arcelo12/fh6-tel-linux-webui?label=version&color=blue)](https://github.com/arcelo12/fh6-tel-linux-webui/releases/latest)
 [![Download](https://img.shields.io/github/downloads/arcelo12/fh6-tel-linux-webui/total)](https://github.com/arcelo12/fh6-tel-linux-webui/releases/latest)
-[![Build](https://img.shields.io/github/actions/workflow/status/arcelo12/fh6-tel-linux-webui/release.yml?label=build)](https://github.com/arcelo12/fh6-tel-linux-webui/actions/workflows/release.yml)
+[![Build](https://img.shields.io/github/actions/workflow/status/arcelo12/fh6-tel-linux-webui/release-suite.yml?label=build)](https://github.com/arcelo12/fh6-tel-linux-webui/actions/workflows/release-suite.yml)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-0078d4)](https://github.com/arcelo12/fh6-tel-linux-webui/releases/latest)
 
@@ -134,19 +134,21 @@ Prerequisites: Go 1.21+, Node.js 18+.
 
 ## Building Release Binaries
 
-To build fully self-contained binaries that embed the compiled Svelte frontend and the static UI pages (so users can run it by just executing a single binary file without any external dependencies), you can run:
+We use a unified **GitHub Actions Release Suite** (`release-suite.yml`) to automatically build and bundle all applications in this repository.
+
+To trigger a full release build for all platforms, simply create and push a tag starting with `v` (e.g. `v1.0.4`):
 
 ```bash
-go run scripts/build_release.go
+git tag v1.0.4
+git push origin v1.0.4
 ```
 
-This script will:
-1. Automatically build the Svelte production assets (`npm run build`).
-2. Copy files to `go-server` for embedding.
-3. Cross-compile binaries for:
-   - **Windows** (x86_64) -> `dist/fh6-telemetry-windows-amd64.exe`
-   - **Linux** (x86_64) -> `dist/fh6-telemetry-linux-amd64`
-   - **macOS** (x86_64) -> `dist/fh6-telemetry-darwin-amd64`
-   - **macOS** (Apple Silicon) -> `dist/fh6-telemetry-darwin-arm64`
-4. Clean up the temporary assets.
+Alternatively, you can manually trigger the **Release Suite (WebUI, CLI, GUI)** from the GitHub Actions tab.
+
+This single workflow will automatically build:
+1. **Web Dashboard Server** (Cross-compiled Go binaries embedding the Svelte UI)
+2. **Mirror CLI / TUI** (Lightweight cross-compiled Go binaries)
+3. **Mirror GUI Hub** (Native Tauri installers for Windows, Linux, and macOS)
+
+All artifacts will be uploaded to a single GitHub Release page.
 
