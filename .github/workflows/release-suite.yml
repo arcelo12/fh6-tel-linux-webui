@@ -1,0 +1,164 @@
+name: Release Suite (WebUI, CLI, GUI)
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g. 1.0.0)'
+        required: true
+        default: '1.0.0'
+
+jobs:
+  build-go-apps:
+    name: Build WebUI & CLI
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          
+      - name: Resolve Version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="${{ inputs.version }}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          
+      # ─── 1. Main WebUI Build ──────────────────────────────────────────────
+      - name: Install dependencies (WebUI)
+        run: npm install
+        
+      - name: Build Main WebUI (Server)
+        run: go run scripts/build_release.go
+          
+      # ─── 2. CLI Mirror Build ──────────────────────────────────────────────
+      - name: Build Mirror CLI
+        working-directory: fh6-tel-mirror
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          LDFLAGS="-s -w -X main.version=$VERSION"
+          mkdir -p dist
+          
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="$LDFLAGS" -o "dist/fh6-tel-mirror-linux-amd64" .
+          CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="$LDFLAGS" -o "dist/fh6-tel-mirror-linux-arm64" .
+          CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="$LDFLAGS" -o "dist/fh6-tel-mirror-windows-amd64.exe" .
+          CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -ldflags="$LDFLAGS" -o "dist/fh6-tel-mirror-windows-arm64.exe" .
+          CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 go build -ldflags="$LDFLAGS" -o "dist/fh6-tel-mirror-darwin-amd64" .
+          CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -ldflags="$LDFLAGS" -o "dist/fh6-tel-mirror-darwin-arm64" .
+          
+          cp mirror_config.json dist/mirror_config.json
+
+      # ─── Create Unified GitHub Release ────────────────────────────────────
+      - name: Create GitHub Release & Upload Go Binaries
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: "🏁 FH6 Telemetry Suite v${{ steps.version.outputs.version }}"
+          body: |
+            ## 🏁 FH6 Telemetry Suite v${{ steps.version.outputs.version }}
+            
+            Satu rilis untuk semua kebutuhan Forza Horizon 6 Telemetry Anda!
+            
+            ### 1. Web Dashboard (Server) `fh6-telemetry-*`
+            Menjalankan web server lokal untuk melihat dashboard secara langsung di browser Anda.
+            
+            ### 2. Mirror CLI / TUI `fh6-tel-mirror-*`
+            Aplikasi terminal ringan (~3MB) untuk mem-forward telemetri UDP ke beberapa IP/Port sekaligus.
+            
+            ### 3. Mirror GUI Hub `FH6.Telemetry.Mirror.Hub_*`
+            Aplikasi Desktop (Tauri) dengan GUI yang modern dan user-friendly untuk mengatur endpoint mirror.
+          draft: false
+          prerelease: false
+          files: |
+            dist/fh6-telemetry-*
+            fh6-tel-mirror/dist/fh6-tel-mirror-*
+            fh6-tel-mirror/dist/mirror_config.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ─── 3. Tauri GUI Build ────────────────────────────────────────────────────
+  build-gui:
+    name: Build GUI (${{ matrix.os-name }})
+    needs: build-go-apps # Ensure this runs AFTER the release is created above
+    runs-on: ${{ matrix.platform }}
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: 'windows-latest'
+            args: '--target x86_64-pc-windows-msvc'
+            os-name: 'windows-x86_64'
+          - platform: 'ubuntu-22.04'
+            args: '--target x86_64-unknown-linux-gnu'
+            os-name: 'linux-x86_64'
+          - platform: 'macos-latest'
+            args: '--target aarch64-apple-darwin'
+            os-name: 'macos-arm64'
+          - platform: 'macos-latest'
+            args: '--target x86_64-apple-darwin'
+            os-name: 'macos-x86_64'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      
+      - name: Resolve Version
+        id: version
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            VERSION="${GITHUB_REF_NAME#v}"
+          else
+            VERSION="${{ inputs.version }}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Install Linux system dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.0-dev libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev patchelf libglib2.0-dev
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          
+      - name: Install Node.js dependencies
+        working-directory: fh6-tel-mirror-tauri
+        run: npm ci
+
+      - name: Build Tauri app & Upload
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: fh6-tel-mirror-tauri
+          tagName: v${{ steps.version.outputs.version }}
+          releaseName: "🏁 FH6 Telemetry Suite v${{ steps.version.outputs.version }}"
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}
