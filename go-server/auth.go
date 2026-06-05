@@ -14,12 +14,15 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UserRegisterRequest struct {
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
+	Username       string `json:"username"`
+	Email          string `json:"email"`
+	Password       string `json:"password"`
+	TurnstileToken string `json:"turnstileToken"`
 }
 
 type UserVerifyRequest struct {
@@ -41,59 +44,49 @@ type SessionInfo struct {
 
 const sessionDuration = 30 * 24 * time.Hour
 
-// hashPassword hashes a password using a random salt and multiple rounds of SHA-512.
-// TODO(security): Replace this standard-library fallback with Argon2id or bcrypt once external package dependencies can be imported.
+// hashPassword hashes a password using bcrypt.
 func hashPassword(password string) (string, error) {
-	salt := make([]byte, 16)
-	_, err := rand.Read(salt)
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return "", err
 	}
-
-	hash := sha512.New()
-	hash.Write(salt)
-	hash.Write([]byte(password))
-	hashed := hash.Sum(nil)
-
-	// PBKDF2-like loop to stretch the password hash and increase entropy
-	for i := 0; i < 10000; i++ {
-		hash.Reset()
-		hash.Write(hashed)
-		hashed = hash.Sum(nil)
-	}
-
-	saltHex := hex.EncodeToString(salt)
-	hashHex := hex.EncodeToString(hashed)
-	return fmt.Sprintf("%s:%s", saltHex, hashHex), nil
+	return string(hash), nil
 }
 
-// verifyPassword verifies a password against a stored hash using constant-time comparison.
+// verifyPassword verifies a password against a stored bcrypt hash.
 func verifyPassword(password, stored string) bool {
-	parts := strings.Split(stored, ":")
-	if len(parts) != 2 {
-		return false
-	}
-	salt, err := hex.DecodeString(parts[0])
-	if err != nil {
-		return false
-	}
-	storedHash, err := hex.DecodeString(parts[1])
-	if err != nil {
-		return false
+	// Fallback check for old SHA-512 hashes (they contain a colon between salt and hash)
+	if strings.Contains(stored, ":") {
+		parts := strings.Split(stored, ":")
+		if len(parts) != 2 {
+			return false
+		}
+		salt, err := hex.DecodeString(parts[0])
+		if err != nil {
+			return false
+		}
+		storedHash, err := hex.DecodeString(parts[1])
+		if err != nil {
+			return false
+		}
+
+		hash := sha512.New()
+		hash.Write(salt)
+		hash.Write([]byte(password))
+		hashed := hash.Sum(nil)
+
+		for i := 0; i < 10000; i++ {
+			hash.Reset()
+			hash.Write(hashed)
+			hashed = hash.Sum(nil)
+		}
+
+		return subtle.ConstantTimeCompare(hashed, storedHash) == 1
 	}
 
-	hash := sha512.New()
-	hash.Write(salt)
-	hash.Write([]byte(password))
-	hashed := hash.Sum(nil)
-
-	for i := 0; i < 10000; i++ {
-		hash.Reset()
-		hash.Write(hashed)
-		hashed = hash.Sum(nil)
-	}
-
-	return subtle.ConstantTimeCompare(hashed, storedHash) == 1
+	// Bcrypt check
+	err := bcrypt.CompareHashAndPassword([]byte(stored), []byte(password))
+	return err == nil
 }
 
 // createSessionToken generates a secure random session ID
@@ -194,6 +187,33 @@ func handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if globalConfig.Turnstile.Enabled {
+		if req.TurnstileToken == "" {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Verifikasi captcha gagal. Silakan coba lagi."})
+			return
+		}
+		
+		verifyReqBody := fmt.Sprintf("secret=%s&response=%s&remoteip=%s", globalConfig.Turnstile.SecretKey, req.TurnstileToken, ip)
+		resp, err := http.Post("https://challenges.cloudflare.com/turnstile/v0/siteverify", "application/x-www-form-urlencoded", strings.NewReader(verifyReqBody))
+		if err != nil {
+			log.Printf("Turnstile API error: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Internal server error"})
+			return
+		}
+		defer resp.Body.Close()
+
+		var tsResp struct {
+			Success bool `json:"success"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&tsResp); err != nil || !tsResp.Success {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{"error": "Captcha tidak valid. Silakan coba lagi."})
+			return
+		}
+	}
+
 	// Validate inputs
 	username := strings.TrimSpace(req.Username)
 	email := strings.TrimSpace(req.Email)
@@ -262,6 +282,8 @@ func handleRegister(w http.ResponseWriter, r *http.Request) {
 		// Send Email
 		go sendVerificationEmail(email, username, verificationToken)
 	}
+
+	logAudit(0, username, "USER_REGISTER", "Role: "+role, ip)
 
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]string{"message": "Registration successful", "needs_verification": fmt.Sprintf("%t", isVerified == 0)})
@@ -386,6 +408,8 @@ func handleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 	http.SetCookie(w, cookie)
 
+	logAudit(userID, username, "USER_LOGIN", "Session Created", ip)
+
 	json.NewEncoder(w).Encode(map[string]interface{}{
 		"message":  "Login successful",
 		"username": username,
@@ -398,6 +422,13 @@ func handleLogout(w http.ResponseWriter, r *http.Request) {
 	
 	cookie, err := r.Cookie("session_id")
 	if err == nil {
+		// Get user info before deleting session for logging
+		var userID int64
+		var username string
+		db.QueryRow("SELECT user_id, username FROM auth_sessions WHERE session_id = ?", cookie.Value).Scan(&userID, &username)
+		if username != "" {
+			logAudit(userID, username, "USER_LOGOUT", "Session Destroyed", getIP(r))
+		}
 		_, _ = db.Exec("DELETE FROM auth_sessions WHERE session_id = ?", cookie.Value)
 	}
 

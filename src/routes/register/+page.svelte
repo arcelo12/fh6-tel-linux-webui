@@ -12,8 +12,19 @@
   let successMsg = $state('');
   let loading = $state(false);
   let showVerification = $state(false);
+  let turnstileEnabled = $state(false);
+  let turnstileSiteKey = $state('');
 
   onMount(async () => {
+    try {
+      const configRes = await fetch('/api/config');
+      const config = await configRes.json();
+      turnstileEnabled = config.turnstileEnabled;
+      turnstileSiteKey = config.turnstileSiteKey;
+    } catch (e) {
+      console.error('Failed to load config', e);
+    }
+
     // If already authenticated, skip registration
     const user = await checkAuth();
     if (user) {
@@ -44,8 +55,19 @@
     successMsg = '';
     loading = true;
 
+    let turnstileToken = '';
+    if (turnstileEnabled) {
+      const formData = new FormData(e.target as HTMLFormElement);
+      turnstileToken = formData.get('cf-turnstile-response') as string;
+      if (!turnstileToken) {
+        errorMsg = 'Please complete the Captcha';
+        loading = false;
+        return;
+      }
+    }
+
     try {
-      const res = await register(username, email, password);
+      const res = await register(username, email, password, turnstileToken);
       if (res.needsVerification) {
           showVerification = true;
           successMsg = 'Registration successful! Please check your email for the verification code.';
@@ -87,6 +109,9 @@
 
 <svelte:head>
   <title>Register - FH6 Telemetry</title>
+  {#if turnstileEnabled}
+    <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  {/if}
 </svelte:head>
 
 <div class="auth-container">
@@ -206,6 +231,12 @@
           disabled={loading || successMsg !== ''}
         />
       </div>
+
+      {#if turnstileEnabled && turnstileSiteKey}
+        <div class="input-group turnstile-wrapper">
+          <div class="cf-turnstile" data-sitekey={turnstileSiteKey} data-theme="dark"></div>
+        </div>
+      {/if}
 
       <button type="submit" class="submit-btn" disabled={loading || successMsg !== ''}>
         {#if loading}

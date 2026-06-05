@@ -140,6 +140,15 @@ func main() {
 				username TEXT NOT NULL,
 				expires_at INTEGER NOT NULL
 			);
+			CREATE TABLE IF NOT EXISTS audit_logs (
+				id INTEGER PRIMARY KEY AUTOINCREMENT,
+				user_id INTEGER NOT NULL,
+				username TEXT NOT NULL,
+				action TEXT NOT NULL,
+				target TEXT NOT NULL,
+				ip_address TEXT NOT NULL,
+				timestamp_ms INTEGER NOT NULL
+			);
 			CREATE TABLE IF NOT EXISTS multiplayer_sessions (
 				id INTEGER PRIMARY KEY AUTOINCREMENT,
 				lobby_id INTEGER REFERENCES lobbies(id) ON DELETE CASCADE,
@@ -204,8 +213,10 @@ func main() {
 	// Expose Config for Frontend
 	http.HandleFunc("/api/config", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]bool{
+		json.NewEncoder(w).Encode(map[string]interface{}{
 			"multiplayer": IsMinimal != "true",
+			"turnstileEnabled": globalConfig.Turnstile.Enabled,
+			"turnstileSiteKey": globalConfig.Turnstile.SiteKey,
 		})
 	})
 
@@ -247,6 +258,7 @@ func main() {
 		http.HandleFunc("/api/admin/users/role", handleAdminUpdateRole)
 		http.HandleFunc("/api/admin/rooms", handleAdminRooms)
 		http.HandleFunc("/api/admin/rooms/delete", handleAdminDeleteRoom(hub))
+		http.HandleFunc("/api/admin/audit-logs", handleAdminAuditLogs)
 	}
 
 	// Export APIs

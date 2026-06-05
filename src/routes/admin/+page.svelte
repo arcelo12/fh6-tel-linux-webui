@@ -4,12 +4,13 @@
   import { currentUser, checkAuth } from '$lib/stores/auth';
 
   let loading = $state(true);
-  let activeTab = $state<'stats' | 'users' | 'rooms'>('stats');
+  let activeTab = $state<'stats' | 'users' | 'rooms' | 'logs'>('stats');
 
   // Data state
   let stats = $state<any>(null);
   let users = $state<any[]>([]);
   let rooms = $state<any[]>([]);
+  let logs = $state<any[]>([]);
   
   let refreshInterval: any;
 
@@ -34,10 +35,18 @@
     } catch {}
   }
 
+  async function fetchLogs() {
+    try {
+      const res = await fetch('/api/admin/audit-logs');
+      if (res.ok) logs = await res.json();
+    } catch {}
+  }
+
   async function refreshData() {
     if (activeTab === 'stats') await fetchStats();
     if (activeTab === 'users') await fetchUsers();
     if (activeTab === 'rooms') await fetchRooms();
+    if (activeTab === 'logs') await fetchLogs();
   }
 
   async function changeRole(userId: number, newRole: string) {
@@ -107,6 +116,7 @@
       <button class:active={activeTab === 'stats'} onclick={() => activeTab = 'stats'}>📊 System Stats</button>
       <button class:active={activeTab === 'users'} onclick={() => activeTab = 'users'}>👥 User Management</button>
       <button class:active={activeTab === 'rooms'} onclick={() => activeTab = 'rooms'}>🎮 Active Rooms</button>
+      <button class:active={activeTab === 'logs'} onclick={() => activeTab = 'logs'}>🛡️ Audit Logs</button>
       <a href="/" class="home-btn">← Back to App</a>
     </div>
   </div>
@@ -233,6 +243,39 @@
               {/each}
               {#if rooms.length === 0}
                 <tr><td colspan="7" class="empty">No active rooms found</td></tr>
+              {/if}
+            </tbody>
+          </table>
+        </div>
+      {/if}
+
+      {#if activeTab === 'logs'}
+        <div class="section-title">
+          <h1>Security Audit Logs</h1>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Username</th>
+                <th>Action</th>
+                <th>Target Info</th>
+                <th>IP Address</th>
+              </tr>
+            </thead>
+            <tbody>
+              {#each logs as log}
+                <tr>
+                  <td>{new Date(log.timestampMs).toLocaleString()}</td>
+                  <td class="bold">{log.username || 'System'}</td>
+                  <td><span class="badge {log.action.includes('LOGIN') ? 'public' : log.action.includes('DELETE') ? 'rec' : 'private'}">{log.action}</span></td>
+                  <td>{log.target}</td>
+                  <td class="code-col">{log.ipAddress}</td>
+                </tr>
+              {/each}
+              {#if logs.length === 0}
+                <tr><td colspan="5" class="empty">No audit logs found</td></tr>
               {/if}
             </tbody>
           </table>

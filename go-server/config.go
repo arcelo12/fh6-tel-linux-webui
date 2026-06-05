@@ -20,9 +20,16 @@ type AuthConfig struct {
 	MaxRegisterAttempts int `json:"maxRegisterAttempts"` // per hour
 }
 
+type TurnstileConfig struct {
+	Enabled   bool   `json:"enabled"`
+	SecretKey string `json:"secretKey"`
+	SiteKey   string `json:"siteKey"`
+}
+
 type AppConfig struct {
-	Smtp SmtpConfig `json:"smtp"`
-	Auth AuthConfig `json:"auth"`
+	Smtp      SmtpConfig      `json:"smtp"`
+	Auth      AuthConfig      `json:"auth"`
+	Turnstile TurnstileConfig `json:"turnstile"`
 }
 
 var globalConfig AppConfig
@@ -43,6 +50,11 @@ func loadConfig() {
 		Auth: AuthConfig{
 			MaxLoginAttempts:    10,
 			MaxRegisterAttempts: 5,
+		},
+		Turnstile: TurnstileConfig{
+			Enabled:   false,
+			SecretKey: "1x0000000000000000000000000000000AA", // dummy test secret
+			SiteKey:   "1x00000000000000000000AA",            // dummy test sitekey
 		},
 	}
 

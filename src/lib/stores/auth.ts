@@ -67,8 +67,8 @@ export async function login(email: string, password: string): Promise<UserSessio
   return user;
 }
 
-export async function register(username: string, email: string, password: string): Promise<{ needsVerification: boolean }> {
-  const res = await apiRequest<{ needs_verification?: string }>('/auth/register', 'POST', { username, email, password });
+export async function register(username: string, email: string, password: string, turnstileToken: string = ''): Promise<{ needsVerification: boolean }> {
+  const res = await apiRequest<{ needs_verification?: string }>('/auth/register', 'POST', { username, email, password, turnstileToken });
   return { needsVerification: res.needs_verification === 'true' };
 }
 

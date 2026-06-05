@@ -94,7 +94,8 @@ func handleAdminUpdateRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, ok := checkAdmin(r); !ok {
+	session, ok := checkAdmin(r)
+	if !ok {
 		w.WriteHeader(http.StatusForbidden)
 		return
 	}
@@ -119,6 +120,8 @@ func handleAdminUpdateRole(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	logAudit(session.UserID, session.Username, "UPDATE_USER_ROLE", "User ID "+fmt.Sprint(req.UserID)+" to "+req.Role, getIP(r))
 
 	json.NewEncoder(w).Encode(map[string]bool{"success": true})
 }
@@ -183,7 +186,8 @@ func handleAdminDeleteRoom(hub *Hub) http.HandlerFunc {
 			return
 		}
 
-		if _, ok := checkAdmin(r); !ok {
+		session, ok := checkAdmin(r)
+		if !ok {
 			w.WriteHeader(http.StatusForbidden)
 			return
 		}
@@ -229,6 +233,8 @@ func handleAdminDeleteRoom(hub *Hub) http.HandlerFunc {
 		hub.broadcastToRoom(req.RoomCode, msg)
 
 		log.Printf("[Admin] Room %s forcefully closed", req.RoomCode)
+		logAudit(session.UserID, session.Username, "DELETE_ROOM", "Room "+req.RoomCode, getIP(r))
+
 		json.NewEncoder(w).Encode(map[string]bool{"success": true})
 	}
 }
